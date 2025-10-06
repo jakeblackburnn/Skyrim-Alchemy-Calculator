@@ -7,10 +7,12 @@ class Player:
                  is_physician=False, 
                  is_benefactor=False, 
                  is_poisoner=False, 
-                 is_seeker=False):
+                 is_seeker=False,
+                 has_purity=False):
 
         self.alchemy_skill = skill
         self.fortify_alchemy = fortify
+        self.has_purity = has_purity
 
         self.alchemist_perk = 0
         self.physician_perk = 0
@@ -34,6 +36,16 @@ class Player:
 
         if is_seeker:
             self.seeker_of_shadows = 10
+
+    @classmethod
+    def from_dict(cls, dict):
+        return cls(dict["alchemy_skill"],
+                   dict["fortify_alchemy"],
+                   dict["alchemist_perk"],
+                   dict["physician_perk"],
+                   dict["benefactor_perk"],
+                   dict["poisoner_perk"],
+                   dict["seeker_of_shadows"])
 
 
     def print_self(self):
