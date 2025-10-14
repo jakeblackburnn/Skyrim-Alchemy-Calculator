@@ -45,7 +45,8 @@ class Player:
                    dict["physician_perk"],
                    dict["benefactor_perk"],
                    dict["poisoner_perk"],
-                   dict["seeker_of_shadows"])
+                   dict["seeker_of_shadows"],
+                   dict.get("purity_perk", False))
 
 
     def print_self(self):
