@@ -4,8 +4,8 @@ from .ingredient import Ingredient
 
 class IngredientsDatabase:
 
-    def __init__(self):
-        self.ingredients_file = open("data/master_ingredients.csv", newline = '')
+    def __init__(self, data_dir="data"):
+        self.ingredients_file = open(f"{data_dir}/master_ingredients.csv", newline = '')
         self.ingredients_reader = csv.reader(self.ingredients_file)
 
     def get_ingredient(self, name):
@@ -29,8 +29,8 @@ class IngredientsDatabase:
 
 class EffectsDatabase: 
 
-    def __init__(self):
-        self.effects_file = open("data/effects.csv", newline = '')
+    def __init__(self, data_dir="data"):
+        self.effects_file = open(f"{data_dir}/effects.csv", newline = '')
         self.effects_reader = csv.reader(self.effects_file)
 
     def default_effect(self, name):
