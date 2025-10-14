@@ -1,0 +1,56 @@
+effect_name,effect_id,base_magnitude,base_duration,base_cost,effect_type,is_beneficial,varies_duration,description_template
+Cure Disease,000ae723,5,0,0.5,restoration,true,false,Cures all diseases.
+Damage Health,00073f32,2,1,3,destruction,false,false,Causes {mag} points of poison damage.
+Damage Magicka,00073f35,3,0,2.2,destruction,false,false,Does {mag} points of Magicka damage.
+Damage Magicka Regen,0010f99e,100,5,0.5,destruction,false,true,Decrease the target's Magicka regeneration by {mag}% for {dur} seconds.
+Damage Stamina,00073f36,3,0,1.8,destruction,false,false,Does {mag} points of Stamina damage.
+Damage Stamina Regen,0010f99f,100,5,0.3,destruction,false,true,Decrease the target's Stamina regeneration by {mag}% for {dur} seconds.
+Fear,00073f37,1,30,5,illusion,false,false,Creatures and people up to level {mag} flee from combat for {dur} seconds.
+Fortify Alteration,0003eb15,4,60,0.2,restoration,true,false,Alteration spells last {mag}% longer for {dur} seconds.
+Fortify Marksman,00058218,4,60,0.5,restoration,true,false,Bows do {mag}% more damage for {dur} seconds.
+Fortify Barter,00058219,1,30,2,restoration,true,false,You haggle for {mag}% better prices for {dur} seconds.
+Fortify Block,0005821a,4,60,0.5,restoration,true,false,Blocking absorbs {mag}% more damage for {dur} seconds.
+Fortify Carry Weight,0003eb1c,4,300,0.15,restoration,true,false,Carrying capacity increases by {mag} for {dur} seconds.
+Fortify Conjuration,0003eb1d,5,60,0.25,restoration,true,false,Conjuration spells last {mag}% longer for {dur} seconds.
+Fortify Destruction,0003eb1e,5,60,0.5,restoration,true,false,Destruction spells are {mag}% stronger for {dur} seconds.
+Fortify Enchanting,0005821b,1,30,0.6,restoration,true,false,Items are enchanted {mag}% stronger for {dur} seconds.
+Fortify Health,00073f34,4,60,0.35,restoration,true,false,Health is increased by {mag} points for {dur} seconds.
+Fortify Heavy Armor,0005821c,2,60,0.5,restoration,true,false,Increase Heavy Armor skill by {mag} points for {dur} seconds.
+Fortify Illusion,0003eb1f,4,60,0.4,restoration,true,false,Illusion spells are {mag}% stronger for {dur} seconds.
+Fortify Light Armor,0005821d,2,60,0.5,restoration,true,false,Increases Light Armor skill by {mag} points for {dur} seconds.
+Fortify Lockpicking,0005821e,2,30,0.5,restoration,true,false,Lockpicking is {mag}% easier for {dur} seconds.
+Fortify Magicka,00073f33,4,60,0.3,restoration,true,false,Magicka is increased by {mag} points for {dur} seconds.
+Fortify One-Handed,0005821f,4,60,0.5,restoration,true,false,One-handed weapons do {mag}% more damage for {dur} seconds.
+Fortify Pickpocket,00058220,4,60,0.5,restoration,true,false,Pickpocketing is {mag}% easier for {dur} seconds.
+Fortify Restoration,00058221,4,60,0.5,restoration,true,false,Restoration spells are {mag}% stronger for {dur} seconds.
+Fortify Smithing,00058222,4,30,0.75,restoration,true,false,Weapon and armor improving is {mag}% better for {dur} seconds.
+Fortify Sneak,00058223,4,60,0.5,restoration,true,false,You are {mag}% harder to detect for {dur} seconds.
+Fortify Stamina,00058224,4,60,0.3,restoration,true,false,Stamina is increased by {mag} points for {dur} seconds.
+Fortify Two-Handed,00058225,4,60,0.5,restoration,true,false,Two-handed weapons do {mag}% more damage for {dur} seconds.
+Frenzy,00073f2e,1,10,15,illusion,false,false,Creatures and people up to level {mag} will attack anything nearby for {dur} seconds.
+Invisibility,0003eb20,0,4,100,illusion,true,true,Invisibility for {dur} seconds.
+Lingering Damage Health,00073f38,1,10,12,destruction,false,false,Causes {mag} points of poison damage for {dur} seconds.
+Lingering Damage Magicka,00073f39,1,10,10,destruction,false,false,Drains the target's Magicka by {mag} points per second for {dur} seconds.
+Lingering Damage Stamina,00073f3a,1,10,1.8,destruction,false,false,Drain the target's Stamina by {mag} points per second for {dur} seconds.
+Paralysis,00073f30,0,1,500,illusion,false,true,Target is paralyzed for {dur} seconds.
+Ravage Health,00073f2f,2,10,0.4,destruction,false,false,Causes {mag} points of concentrated poison damage.
+Ravage Magicka,00073f31,2,10,1.0,destruction,false,false,Concentrated poison damages maximum magicka by {mag} points.
+Ravage Stamina,00073f3b,2,10,1.6,destruction,false,false,Concentrated poison damages maximum stamina by {mag} points.
+Regenerate Health,0003eb21,5,300,0.1,restoration,true,false,Health regenerates {mag}% faster for {dur} seconds.
+Regenerate Magicka,0003eb22,5,300,0.1,restoration,true,false,Magicka regenerates {mag}% faster for {dur} seconds.
+Regenerate Stamina,0003eb23,5,300,0.1,restoration,true,false,Stamina regenerates {mag}% faster for {dur} seconds.
+Resist Fire,0003eb24,3,60,0.5,restoration,true,false,Resist {mag}% of fire damage for {dur} seconds.
+Resist Frost,0003eb25,3,60,0.5,restoration,true,false,Resist {mag}% of frost damage for {dur} seconds.
+Resist Magic,0003eb26,2,60,1.0,restoration,true,false,Resist {mag}% of magic for {dur} seconds.
+Resist Poison,0003eb27,4,60,0.5,restoration,true,false,Resist {mag}% of poison for {dur} seconds.
+Resist Shock,0003eb28,3,60,0.5,restoration,true,false,Resist {mag}% of shock damage for {dur} seconds.
+Restore Health,00073f2d,5,0,0.5,restoration,true,false,Restore {mag} points of Health.
+Restore Magicka,00073f2c,5,0,0.6,restoration,true,false,Restore {mag} points of Magicka.
+Restore Stamina,00073f2b,5,0,0.6,restoration,true,false,Restore {mag} Stamina.
+Slow,00073f3c,50,5,1.0,illusion,false,true,Target moves at 50% speed for {dur} seconds.
+Waterbreathing,00058226,0,5,30.0,alteration,true,true,Can breathe underwater for {dur} seconds.
+Weakness to Fire,00073f3d,3,30,0.6,destruction,false,false,Target is {mag}% weaker to fire damage for {dur} seconds.
+Weakness to Frost,00073f3e,3,30,0.5,destruction,false,false,Target is {mag}% weaker to frost damage for {dur} seconds.
+Weakness to Magic,00073f3f,2,30,1.0,destruction,false,false,Target is {mag}% weaker to magic for {dur} seconds.
+Weakness to Poison,00073f40,2,30,1.0,destruction,false,false,Target is {mag}% weaker to poison for {dur} seconds.
+Weakness to Shock,00073f41,3,30,0.7,destruction,false,false,Target is {mag}% weaker to shock damage for {dur} seconds.

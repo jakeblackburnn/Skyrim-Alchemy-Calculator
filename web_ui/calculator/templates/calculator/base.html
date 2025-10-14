@@ -1,0 +1,35 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skyrim Alchemy Calculator</title>
+    <link rel="stylesheet" href="{% static 'calculator/css/styles.css' %}">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Skyrim Alchemy Calculator</h1>
+            <nav class="tab-navigation">
+                <a href="{% url 'calculator:calculator' %}" class="tab-button {% if request.resolver_match.url_name == 'calculator' %}active{% endif %}">
+                    Calculator
+                </a>
+                <a href="{% url 'calculator:datasets' %}" class="tab-button {% if request.resolver_match.url_name == 'datasets' %}active{% endif %}">
+                    Datasets
+                </a>
+                <a href="{% url 'calculator:insights' %}" class="tab-button {% if request.resolver_match.url_name == 'insights' %}active{% endif %}">
+                    Analysis & Insights
+                </a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="content">
+            {% block content %}
+            {% endblock %}
+        </div>
+    </div>
+</body>
+</html>
