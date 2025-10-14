@@ -98,6 +98,25 @@ class Potion:
         for effect in self.realized_effects:
             print(f"  - {effect.get_description()}")
 
+    def to_dict(self):
+        """Serialize potion to JSON-compatible dict for API responses."""
+        return {
+            "name": self.name,
+            "ingredients": self.ingredient_names,
+            "total_value": self.total_value,
+            "effects": [
+                {
+                    "name": e.name,
+                    "description": e.get_description(),
+                    "magnitude": e.magnitude,
+                    "duration": e.duration,
+                    "value": e.value,
+                    "is_poison": e.is_poison
+                }
+                for e in self.realized_effects
+            ]
+        }
+
 
 
 if __name__ == "__main__":
