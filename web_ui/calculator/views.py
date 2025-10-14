@@ -2,6 +2,7 @@ import json
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
 from .utils import get_all_ingredients
 from src.alchemy_simulator import AlchemySimulator
 
@@ -28,6 +29,7 @@ def insights_view(request):
     return render(request, 'calculator/insights.html')
 
 
+@csrf_exempt
 @require_http_methods(["POST"])
 def calculate_potions(request):
     """API endpoint to calculate potions from player stats and ingredients."""
