@@ -10,7 +10,12 @@
 <body>
     <header>
         <div class="container">
-            <h1>Skyrim Alchemy Calculator</h1>
+            <div class="header-content">
+                <h1>Skyrim Alchemy Calculator</h1>
+                <div class="portfolio-attribution">
+                    Created by - <a href="https://j-blackburn-portfolio.web.app/" target="_blank" rel="noopener noreferrer" class="portfolio-link">J. Blackburn</a>
+                </div>
+            </div>
             <nav class="tab-navigation">
                 <a href="{% url 'calculator:calculator' %}" class="tab-button {% if request.resolver_match.url_name == 'calculator' %}active{% endif %}">
                     Calculator

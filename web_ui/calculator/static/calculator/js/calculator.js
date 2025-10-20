@@ -8,7 +8,6 @@ function getSelectedIngredients() {
 function showError(message) {
     const container = document.getElementById('results-container');
     container.innerHTML = `
-        <h2 class="section-title">Potions (Sorted by Value)</h2>
         <div class="error-message">
             <strong>Error:</strong> ${message}
         </div>
@@ -21,23 +20,22 @@ function showLoadingSpinner() {
     const button = document.getElementById('calculate-btn');
 
     container.innerHTML = `
-        <h2 class="section-title">Potions (Sorted by Value)</h2>
         <div class="loading-spinner">
             <div class="spinner"></div>
             <p>Calculating potions...</p>
         </div>
     `;
 
-    button.disabled = true;
-    button.style.backgroundColor = '#666';
+    button.classList.add('disabled');
+    button.style.color = '#ccc9bf';
     button.style.cursor = 'not-allowed';
 }
 
 // Helper function to hide loading state
 function hideLoadingSpinner() {
     const button = document.getElementById('calculate-btn');
-    button.disabled = false;
-    button.style.backgroundColor = '#4a9eff';
+    button.classList.remove('disabled');
+    button.style.color = '#50c9a5';
     button.style.cursor = 'pointer';
 }
 
@@ -47,15 +45,14 @@ function renderPotions(potions) {
 
     if (potions.length === 0) {
         container.innerHTML = `
-            <h2 class="section-title">Potions (Sorted by Value)</h2>
-            <div style="color: #888; text-align: center; padding: 40px;">
+            <div style="color: #666666; text-align: center; padding: 40px;">
                 <p>No valid potions found with the selected ingredients.</p>
             </div>
         `;
         return;
     }
 
-    let html = '<h2 class="section-title">Potions (Sorted by Value)</h2>';
+    let html = '';
 
     potions.forEach(potion => {
         html += `
@@ -144,7 +141,30 @@ async function calculatePotions() {
     }
 }
 
+// Match results section height to input section
+function matchSectionHeights() {
+    const inputSection = document.querySelector('.input-section');
+    const resultsSection = document.querySelector('.results-section');
+    const resultsContent = document.getElementById('results-container');
+
+    if (inputSection && resultsSection && resultsContent) {
+        const inputHeight = inputSection.offsetHeight;
+        resultsSection.style.height = `${inputHeight}px`;
+
+        // Calculate available height for scrollable content
+        const titleHeight = resultsSection.querySelector('.section-title').offsetHeight;
+        const padding = 40; // Account for padding and margins
+        resultsContent.style.height = `${inputHeight - titleHeight - padding}px`;
+    }
+}
+
 // Attach event listener to calculate button
 document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('calculate-btn').addEventListener('click', calculatePotions);
+
+    // Match heights on load
+    matchSectionHeights();
+
+    // Re-match heights on window resize
+    window.addEventListener('resize', matchSectionHeights);
 });
