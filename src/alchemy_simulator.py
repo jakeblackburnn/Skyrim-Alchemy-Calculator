@@ -5,6 +5,29 @@ from .database import IngredientsDatabase, EffectsDatabase
 
 class AlchemySimulator:
 
+    def __init__(self, player_stats, ingredients_list):
+        self.ingredients_list = ingredients_list
+        self.player = Player.from_dict(player_stats)
+        self.ingredients_db = IngredientsDatabase()
+        self.effects_db = EffectsDatabase()
+
+        self.generate_potions()
+
+    @classmethod
+    def from_base_player(cls, ingredients_list):
+        """Create an AlchemySimulator with a default Player (skill=15, no perks)."""
+        base_player_stats = {
+            "alchemy_skill": 15,
+            "fortify_alchemy": 0,
+            "alchemist_perk": 0,
+            "physician_perk": False,
+            "benefactor_perk": False,
+            "poisoner_perk": False,
+            "seeker_of_shadows": False,
+            "purity_perk": False
+        }
+        return cls(base_player_stats, ingredients_list)
+
     def generate_potions(self):
         valid_combinations = []
 
@@ -45,13 +68,6 @@ class AlchemySimulator:
             potion.print_self()
             print()
 
-    def __init__(self, player_stats, ingredients_list):
-        self.ingredients_list = ingredients_list
-        self.player = Player.from_dict(player_stats)
-        self.ingredients_db = IngredientsDatabase()
-        self.effects_db = EffectsDatabase()
-
-        self.generate_potions()
 
     def update_player(self, player_stats):
         self.player = Player.from_dict(player_stats)
