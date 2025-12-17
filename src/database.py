@@ -63,38 +63,70 @@ class IngredientsDatabase:
         }
     }
 
+    # Ingredients excluded from vendor inventories despite rarity classification
+    # Note: Some entries may need verification against actual game vendor availability
+    VENDOR_BLACKLIST = [
+        'Ancestor Moth Wing',        # Dawnguard - rare but quest-specific
+        'Chaurus Hunter Antennae',   # Dawnguard - rare but limited availability
+        'Crimson Nirnroot',          # Very rare - already excluded by rarity tier
+        'Glowing Mushroom',          # Common but blackwater cave-exclusive (verify)
+        'Gleamblossom',              # Dawnguard - uncommon but quest-locked
+    ]
+
+    # Maps ingredient rarity levels to vendor tier pools
+    # very_rare and unique rarities are excluded entirely from vendor inventories
+    VENDOR_TIER_ASSIGNMENT = {
+        'common': 'common_pool',
+        'uncommon': 'uncommon_pool',
+        'rare': 'rare_pool',
+        'very_rare': 'EXCLUDED',
+        'unique': 'EXCLUDED',
+    }
+
+    # Vendor tier configuration for Bernoulli sampling
+    # Each slot has independent spawn_chance probability of being filled
+    # Expected inventory size: (15 + 10 + 5) * 0.75 = 22.5 unique ingredients
+    VENDOR_TIERS = {
+        'common_pool': {
+            'slots': 15,
+            'spawn_chance': 0.75,
+        },
+        'uncommon_pool': {
+            'slots': 10,
+            'spawn_chance': 0.75,
+        },
+        'rare_pool': {
+            'slots': 5,
+            'spawn_chance': 0.75,
+        },
+    }
+
     def __init__(self, data_dir="data"):
-        self.ingredients_file = open(f"{data_dir}/master_ingredients.csv", newline = '')
-        self.ingredients_reader = csv.reader(self.ingredients_file)
+        self._ingredients = {}  # Dict[str, Ingredient]
+        self._load_ingredients(data_dir)
+
+    def _load_ingredients(self, data_dir):
+        """Load all ingredients from CSV into dictionary (called once)."""
+        with open(f"{data_dir}/master_ingredients.csv", newline='') as f:
+            reader = csv.reader(f)
+            next(reader)  # Skip header
+
+            for row in reader:
+                line = ','.join(row)
+                ingredient = Ingredient.from_csv_line(line)
+                self._ingredients[ingredient.name] = ingredient
 
     def get_ingredient(self, name):
-        self.ingredients_file.seek(0)
-        next(self.ingredients_reader)
-
-        for row in self.ingredients_reader:
-            ingredient_name = row[0]
-            if ingredient_name == name:
-                line = ','.join(row)
-                return Ingredient.from_csv_line(line)
-
-        return None
+        """O(1) lookup by name from in-memory dictionary."""
+        return self._ingredients.get(name)
 
     def get_all_ingredients(self):
-        """Load all ingredients from CSV.
+        """Return list of all ingredients from in-memory dictionary.
 
         Returns:
             List of all Ingredient objects from the database
         """
-        self.ingredients_file.seek(0)
-        next(self.ingredients_reader)
-
-        ingredients = []
-        for row in self.ingredients_reader:
-            line = ','.join(row)
-            ingredient = Ingredient.from_csv_line(line)
-            ingredients.append(ingredient)
-
-        return ingredients
+        return list(self._ingredients.values())
 
     def _calculate_inventory_size(self, strategy):
         params = self.INVENTORY_SIZE_PARAMS[strategy]
@@ -154,7 +186,59 @@ class IngredientsDatabase:
         return list(selected_names)
 
     def _sample_vendor(self):
-        raise NotImplementedError("Vendor strategy pending further research")
+        """Generate vendor inventory using game-accurate tiered Bernoulli sampling.
+
+        Returns:
+            List[str]: Unique ingredient names (typically 18-27 ingredients)
+        """
+        # Load all ingredients
+        all_ingredients = self.get_all_ingredients()
+
+        # Partition into tier pools with filtering
+        common_pool = []
+        uncommon_pool = []
+        rare_pool = []
+
+        for ing in all_ingredients:
+            # Skip blacklisted ingredients
+            if ing.name in self.VENDOR_BLACKLIST:
+                continue
+
+            # Skip very_rare and unique rarities
+            if ing.rarity in ['very_rare', 'unique']:
+                continue
+
+            # Assign to tier
+            if ing.rarity == 'common':
+                common_pool.append(ing.name)
+            elif ing.rarity == 'uncommon':
+                uncommon_pool.append(ing.name)
+            elif ing.rarity == 'rare':
+                rare_pool.append(ing.name)
+
+        # Run Bernoulli trials for each tier
+        selected_ingredients = []
+
+        # Common tier: 15 slots @ 75%
+        for _ in range(self.VENDOR_TIERS['common_pool']['slots']):
+            if random.random() < self.VENDOR_TIERS['common_pool']['spawn_chance']:
+                if common_pool:
+                    selected_ingredients.append(random.choice(common_pool))
+
+        # Uncommon tier: 10 slots @ 75%
+        for _ in range(self.VENDOR_TIERS['uncommon_pool']['slots']):
+            if random.random() < self.VENDOR_TIERS['uncommon_pool']['spawn_chance']:
+                if uncommon_pool:
+                    selected_ingredients.append(random.choice(uncommon_pool))
+
+        # Rare tier: 5 slots @ 75%
+        for _ in range(self.VENDOR_TIERS['rare_pool']['slots']):
+            if random.random() < self.VENDOR_TIERS['rare_pool']['spawn_chance']:
+                if rare_pool:
+                    selected_ingredients.append(random.choice(rare_pool))
+
+        # Deduplicate and return
+        return list(set(selected_ingredients))
 
     def sample_inventory(self, strategy, size=None):
         valid_strategies = ["normal", "random_weighted", "vendor"]
@@ -172,11 +256,9 @@ class IngredientsDatabase:
             return self._sample_vendor()
 
     def print_self(self):
-        for row in self.ingredients_reader:
-            print(row)
-
-    def __del__(self):
-        self.ingredients_file.close()
+        """Debug helper to print all ingredients."""
+        for name, ingredient in self._ingredients.items():
+            print(f"{name}: {ingredient}")
 
 
 
