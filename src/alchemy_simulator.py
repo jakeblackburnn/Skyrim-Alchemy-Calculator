@@ -5,17 +5,27 @@ from .database import IngredientsDatabase, EffectsDatabase
 
 class AlchemySimulator:
 
-    def __init__(self, player_stats, ingredients_list):
+    def __init__(self, player_stats, ingredients_list=None):
         self.ingredients_list = ingredients_list
         self.player = Player.from_dict(player_stats)
         self.ingredients_db = IngredientsDatabase()
         self.effects_db = EffectsDatabase()
+        self._inventory = None  # Add inventory state tracking
 
-        self.generate_potions()
+        # Only generate potions if ingredients provided
+        if ingredients_list is not None:
+            self.generate_potions()
+        else:
+            self.potions = []  # Initialize empty list
 
     @classmethod
-    def from_base_player(cls, ingredients_list):
-        """Create an AlchemySimulator with a default Player (skill=15, no perks)."""
+    def from_base_player(cls, ingredients_list=None):
+        """Create an AlchemySimulator with a default Player (skill=15, no perks).
+
+        Args:
+            ingredients_list: Optional list of ingredient names. If None,
+                            creates simulator without generating potions.
+        """
         base_player_stats = {
             "alchemy_skill": 15,
             "fortify_alchemy": 0,
@@ -71,13 +81,142 @@ class AlchemySimulator:
 
     def update_player(self, player_stats):
         self.player = Player.from_dict(player_stats)
-        self.generate_potions()
+        # Only regenerate if we have ingredients
+        if self.ingredients_list is not None:
+            self.generate_potions()
 
     def add_ingredient(self, ingredient_name):
         # check that ingredient doesnt already exist
-        self.generate_potions()
+        if self.ingredients_list is None:
+            self.ingredients_list = []
+
+        if ingredient_name not in self.ingredients_list:
+            self.ingredients_list.append(ingredient_name)
+            self.generate_potions()
 
     def remove_ingredient(self, ingredient_name):
-        # check that ingredient is in ingredients list 
+        # check that ingredient is in ingredients list
+        if self.ingredients_list is not None and ingredient_name in self.ingredients_list:
+            self.ingredients_list.remove(ingredient_name)
+            self.generate_potions()
+
+    def set_inventory(self, inventory):
+        """Set current inventory and regenerate potions.
+
+        Args:
+            inventory: Inventory instance with ingredient quantities
+
+        Raises:
+            TypeError: If inventory is not an Inventory instance
+        """
+        from .inventory import Inventory
+
+        if not isinstance(inventory, Inventory):
+            raise TypeError(f"Expected Inventory instance, got {type(inventory)}")
+
+        self._inventory = inventory
+        self.ingredients_list = inventory.get_available_ingredients()
         self.generate_potions()
+
+    def exhaust_inventory(self, strategy="greedy-basic"):
+        """Run potion-making strategy that consumes current inventory.
+
+        Args:
+            strategy: Algorithm to use ("greedy-basic" supported)
+
+        Returns:
+            List of Potion objects created in order
+
+        Raises:
+            ValueError: If no inventory set or unknown strategy
+        """
+        if self._inventory is None:
+            raise ValueError("No inventory set. Call set_inventory() first.")
+
+        if strategy == "greedy-basic":
+            return self._greedy_basic_strategy()
+        else:
+            raise ValueError(f"Unknown strategy: {strategy}")
+
+    def _greedy_basic_strategy(self):
+        """Greedy algorithm: repeatedly make highest-value potion.
+
+        Returns:
+            List of Potion objects created
+        """
+        potions_made = []
+
+        while not self._inventory.is_empty():
+            # Update ingredients from current inventory state
+            self.ingredients_list = self._inventory.get_available_ingredients()
+            self.generate_potions()
+
+            # No more valid potions possible
+            if not self.potions:
+                break
+
+            # Select highest-value potion
+            best = max(self.potions, key=lambda p: p.total_value)
+
+            # Consume ingredients
+            if self._inventory.consume_recipe(best.ingredient_names):
+                potions_made.append(best)
+            else:
+                break  # Safety check
+
+        return potions_made
+
+    def delete_inventory(self):
+        """Clear current inventory and reset potion state.
+
+        Preserves player stats for reuse with new inventory.
+        """
+        self._inventory = None
+        self.ingredients_list = None
+        self.potions = []
+
+    @staticmethod
+    def greedy_potionmaking(player_stats, inventory):
+        """Run greedy algorithm consuming inventory.
+
+        Creates potions by repeatedly selecting the highest-value potion
+        and consuming its ingredients from the inventory until no more
+        potions can be made.
+
+        Args:
+            player_stats: Player stats dict with keys:
+                - alchemy_skill: int
+                - fortify_alchemy: int
+                - alchemist_perk: int
+                - physician_perk: bool
+                - benefactor_perk: bool
+                - poisoner_perk: bool
+                - seeker_of_shadows: bool
+                - purity_perk: bool
+            inventory: Inventory instance with available ingredients
+
+        Returns:
+            List of Potion objects created (in order of creation)
+        """
+        potions_made = []
+
+        while not inventory.is_empty():
+            # Generate all possible potions from current inventory
+            sim = AlchemySimulator(player_stats, inventory.get_available_ingredients())
+
+            # No more valid potions can be made
+            if not sim.potions:
+                break
+
+            # Select highest-value potion
+            best = max(sim.potions, key=lambda p: p.total_value)
+
+            # Try to consume ingredients
+            if inventory.consume_recipe(best.ingredient_names):
+                potions_made.append(best)
+            else:
+                # Should not happen if logic is correct, but break to avoid infinite loop
+                break
+
+        return potions_made
 
