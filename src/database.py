@@ -1,105 +1,10 @@
 import csv
-import random
+import warnings
 from .effect import Effect
 from .ingredient import Ingredient
+from .inventory import Inventory
 
 class IngredientsDatabase:
-    # Rarity weights for sampling strategies
-    RARITY_WEIGHTS = {
-        'normal': {
-            'common': 1.0,
-            'uncommon': 1.0,
-            'rare': 1.0,
-            'very_rare': 1.0,
-            'unique': 1.0
-        },
-        'random_weighted': {
-            'common': 1.0,
-            'uncommon': 0.85,
-            'rare': 0.7,
-            'very_rare': 0.5,
-            'unique': 0.3
-        }
-    }
-
-    # Source type weights for sampling strategies
-    # All uniform (1.0) for now - ready for future tuning
-    SOURCE_WEIGHTS = {
-        'normal': {
-            'plant': 1.0,
-            'creature': 1.0,
-            'fish': 1.0,
-            'fungus': 1.0,
-            'food': 1.0,
-            'crafting': 1.0,
-            'misc': 1.0,
-            'drug': 1.0
-        },
-        'random_weighted': {
-            'plant': 1.0,
-            'creature': 1.0,
-            'fish': 1.0,
-            'fungus': 1.0,
-            'food': 1.0,
-            'crafting': 1.0,
-            'misc': 1.0,
-            'drug': 1.0
-        }
-    }
-
-    # Inventory size distribution parameters
-    INVENTORY_SIZE_PARAMS = {
-        'normal': {
-            'mean': 35,
-            'std': 10,
-            'min': 10,
-            'max': 70
-        },
-        'random_weighted': {
-            'mean': 35,
-            'std': 10,
-            'min': 10,
-            'max': 70
-        }
-    }
-
-    # Ingredients excluded from vendor inventories despite rarity classification
-    # Note: Some entries may need verification against actual game vendor availability
-    VENDOR_BLACKLIST = [
-        'Ancestor Moth Wing',        # Dawnguard - rare but quest-specific
-        'Chaurus Hunter Antennae',   # Dawnguard - rare but limited availability
-        'Crimson Nirnroot',          # Very rare - already excluded by rarity tier
-        'Glowing Mushroom',          # Common but blackwater cave-exclusive (verify)
-        'Gleamblossom',              # Dawnguard - uncommon but quest-locked
-    ]
-
-    # Maps ingredient rarity levels to vendor tier pools
-    # very_rare and unique rarities are excluded entirely from vendor inventories
-    VENDOR_TIER_ASSIGNMENT = {
-        'common': 'common_pool',
-        'uncommon': 'uncommon_pool',
-        'rare': 'rare_pool',
-        'very_rare': 'EXCLUDED',
-        'unique': 'EXCLUDED',
-    }
-
-    # Vendor tier configuration for Bernoulli sampling
-    # Each slot has independent spawn_chance probability of being filled
-    # Expected inventory size: (15 + 10 + 5) * 0.75 = 22.5 unique ingredients
-    VENDOR_TIERS = {
-        'common_pool': {
-            'slots': 15,
-            'spawn_chance': 0.75,
-        },
-        'uncommon_pool': {
-            'slots': 10,
-            'spawn_chance': 0.75,
-        },
-        'rare_pool': {
-            'slots': 5,
-            'spawn_chance': 0.75,
-        },
-    }
 
     def __init__(self, data_dir="data"):
         self._ingredients = {}  # Dict[str, Ingredient]
@@ -128,132 +33,44 @@ class IngredientsDatabase:
         """
         return list(self._ingredients.values())
 
-    def _calculate_inventory_size(self, strategy):
-        params = self.INVENTORY_SIZE_PARAMS[strategy]
-        size = random.gauss(params['mean'], params['std'])
-        return max(params['min'], min(params['max'], int(size)))
+    def sample_inventory(self, strategy: str, size: int = None):
+        """DEPRECATED: Use Inventory.generate_*() methods instead.
 
-    def _calculate_weights(self, ingredients, strategy):
-        rarity_weights = self.RARITY_WEIGHTS[strategy]
-        source_weights = self.SOURCE_WEIGHTS[strategy]
+        This method will be removed in version 2.0.
 
-        weights = []
-        for ing in ingredients:
-            rarity_weight = rarity_weights.get(ing.rarity, 1.0)
-            source_weight = source_weights.get(ing.source, 1.0)
-            combined_weight = rarity_weight * source_weight
-            weights.append(combined_weight)
+        Migration guide:
+            Old: db.sample_inventory("vendor")
+            New: Inventory.generate_vendor(db).get_available_ingredients()
 
-        return weights
-
-    def _sample_normal(self, size):
-        if size is None:
-            size = self._calculate_inventory_size('normal')
-
-        all_ingredients = self.get_all_ingredients()
-
-        # Ensure size doesn't exceed available ingredients
-        size = min(size, len(all_ingredients))
-
-        # Uniform random sampling without replacement
-        sampled = random.sample(all_ingredients, size)
-
-        # Return ingredient names
-        return [ing.name for ing in sampled]
-
-    def _sample_random_weighted(self, size):
-        if size is None:
-            size = self._calculate_inventory_size('random_weighted')
-
-        all_ingredients = self.get_all_ingredients()
-        weights = self._calculate_weights(all_ingredients, 'random_weighted')
-
-        # Use set to track unique selections
-        selected_names = set()
-
-        # Iteratively sample until we have desired size or exhaust attempts
-        max_attempts = size * 3  # Allow some buffer for deduplication
-        attempts = 0
-
-        while len(selected_names) < size and attempts < max_attempts:
-            # Sample with replacement, then deduplicate
-            remaining = size - len(selected_names)
-            batch = random.choices(all_ingredients, weights=weights, k=remaining)
-            selected_names.update(ing.name for ing in batch)
-            attempts += 1
-
-        # Convert to list (may be slightly under size if duplicates were excessive)
-        return list(selected_names)
-
-    def _sample_vendor(self):
-        """Generate vendor inventory using game-accurate tiered Bernoulli sampling.
+        Args:
+            strategy: Sampling strategy ('normal', 'random_weighted', or 'vendor')
+            size: Number of ingredients (ignored for 'vendor' strategy)
 
         Returns:
-            List[str]: Unique ingredient names (typically 18-27 ingredients)
+            List of ingredient names
         """
-        # Load all ingredients
-        all_ingredients = self.get_all_ingredients()
+        warnings.warn(
+            "sample_inventory() is deprecated and will be removed in version 2.0. "
+            "Use Inventory.generate_normal(), Inventory.generate_random_weighted(), "
+            "or Inventory.generate_vendor() instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
 
-        # Partition into tier pools with filtering
-        common_pool = []
-        uncommon_pool = []
-        rare_pool = []
-
-        for ing in all_ingredients:
-            # Skip blacklisted ingredients
-            if ing.name in self.VENDOR_BLACKLIST:
-                continue
-
-            # Skip very_rare and unique rarities
-            if ing.rarity in ['very_rare', 'unique']:
-                continue
-
-            # Assign to tier
-            if ing.rarity == 'common':
-                common_pool.append(ing.name)
-            elif ing.rarity == 'uncommon':
-                uncommon_pool.append(ing.name)
-            elif ing.rarity == 'rare':
-                rare_pool.append(ing.name)
-
-        # Run Bernoulli trials for each tier
-        selected_ingredients = []
-
-        # Common tier: 15 slots @ 75%
-        for _ in range(self.VENDOR_TIERS['common_pool']['slots']):
-            if random.random() < self.VENDOR_TIERS['common_pool']['spawn_chance']:
-                if common_pool:
-                    selected_ingredients.append(random.choice(common_pool))
-
-        # Uncommon tier: 10 slots @ 75%
-        for _ in range(self.VENDOR_TIERS['uncommon_pool']['slots']):
-            if random.random() < self.VENDOR_TIERS['uncommon_pool']['spawn_chance']:
-                if uncommon_pool:
-                    selected_ingredients.append(random.choice(uncommon_pool))
-
-        # Rare tier: 5 slots @ 75%
-        for _ in range(self.VENDOR_TIERS['rare_pool']['slots']):
-            if random.random() < self.VENDOR_TIERS['rare_pool']['spawn_chance']:
-                if rare_pool:
-                    selected_ingredients.append(random.choice(rare_pool))
-
-        # Deduplicate and return
-        return list(set(selected_ingredients))
-
-    def sample_inventory(self, strategy, size=None):
-        valid_strategies = ["normal", "random_weighted", "vendor"]
-
-        if strategy not in valid_strategies:
+        # Delegate to new Inventory class
+        if strategy == "normal":
+            inv = Inventory.generate_normal(self, size)
+        elif strategy == "random_weighted":
+            inv = Inventory.generate_random_weighted(self, size)
+        elif strategy == "vendor":
+            inv = Inventory.generate_vendor(self)
+        else:
             raise ValueError(
-                f"Invalid strategy '{strategy}'. Must be one of: {valid_strategies}"
+                f"Invalid strategy '{strategy}'. "
+                f"Must be one of: ['normal', 'random_weighted', 'vendor']"
             )
 
-        if strategy == "normal":
-            return self._sample_normal(size)
-        elif strategy == "random_weighted":
-            return self._sample_random_weighted(size)
-        elif strategy == "vendor":
-            return self._sample_vendor()
+        return inv.get_available_ingredients()
 
     def print_self(self):
         """Debug helper to print all ingredients."""
