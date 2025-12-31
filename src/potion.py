@@ -6,6 +6,10 @@ from .player import Player
 class Potion:
 
     def __init__(self, ingredient_names, player, ingredients_db, effects_db):
+        # Validate ingredient count (must be 2 or 3)
+        if len(ingredient_names) not in [2, 3]:
+            raise ValueError(f"Potion requires 2 or 3 ingredients, got {len(ingredient_names)}")
+
         # Get all ingredients
         ingredients = [ingredients_db.get_ingredient(name) for name in ingredient_names]
 
@@ -20,15 +24,29 @@ class Potion:
             effect_counts[effect_name] = effect_counts.get(effect_name, 0) + 1
         common_effect_names = {name for name, count in effect_counts.items() if count >= 2}
 
+        # Validate that common effects exist
+        if not common_effect_names:
+            raise ValueError(f"No common effects found among ingredients: {ingredient_names}")
+
         # Build Effect objects only for common effects, grouped by effect name
+        # Track which ingredients contribute to validate all participate
         effect_groups = {}
+        contributing_ingredients = set()
         for ingredient in ingredients:
             for effect_name in ingredient.get_effect_names():
                 if effect_name in common_effect_names:
+                    contributing_ingredients.add(ingredient.name)
                     effect = effects_db.ingredient_effect(effect_name, ingredient)
                     if effect_name not in effect_groups:
                         effect_groups[effect_name] = []
                     effect_groups[effect_name].append(effect)
+
+        # Validate that all ingredients contribute at least one effect
+        if len(contributing_ingredients) != len(ingredients):
+            non_contributing = [ing.name for ing in ingredients if ing.name not in contributing_ingredients]
+            raise ValueError(
+                f"Ingredient(s) {non_contributing} share no effects with other ingredients"
+            )
 
         # Keep only the highest base value effect from each group
         base_effects = []
@@ -79,7 +97,7 @@ class Potion:
         self.realized_effects = [effect.realize(calc_player) for effect in base_effects]
         self.total_value = sum(e.value for e in self.realized_effects)
 
-        self.ingredients = ingredients
+        self.ingredients_list = ingredients
         self.ingredient_names = ingredient_names
 
         # Store dominant effect as realized
@@ -118,6 +136,16 @@ class Potion:
     def effect_names(self) -> list[str]:
         """List of all effect names in this potion"""
         return [e.name for e in self.realized_effects]
+
+    @property 
+    def effects(self) -> List[Effect]:
+        """list of realized effects"""
+        return self.realized_effects
+
+    @property 
+    def ingredients(self) -> List[ingredient]:
+        """list of ingredients used"""
+        return self.ingredients_list
 
     def print_self(self):
         print(f"{self.name}")
