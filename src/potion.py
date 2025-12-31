@@ -1,4 +1,5 @@
 import numpy as np
+from .ingredient import Ingredient
 from .database import IngredientsDatabase, EffectsDatabase
 from .effect import Effect
 from .player import Player
@@ -138,12 +139,12 @@ class Potion:
         return [e.name for e in self.realized_effects]
 
     @property 
-    def effects(self) -> List[Effect]:
+    def effects(self) -> list[Effect]:
         """list of realized effects"""
         return self.realized_effects
 
     @property 
-    def ingredients(self) -> List[ingredient]:
+    def ingredients(self) -> list[Ingredient]:
         """list of ingredients used"""
         return self.ingredients_list
 
