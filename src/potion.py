@@ -79,6 +79,7 @@ class Potion:
         self.realized_effects = [effect.realize(calc_player) for effect in base_effects]
         self.total_value = sum(e.value for e in self.realized_effects)
 
+        self.ingredients = ingredients
         self.ingredient_names = ingredient_names
 
         # Store dominant effect as realized
@@ -88,6 +89,35 @@ class Potion:
         prefix = "Poison" if self.dominant_effect.is_poison else "Potion"
         self.name = f"{prefix} of {self.dominant_effect.name}"
 
+    @property
+    def value(self) -> int:
+        """Alias for total_value (more Pythonic)"""
+        return self.total_value
+
+    @property
+    def num_ingredients(self) -> int:
+        """Number of ingredients (2 or 3)"""
+        return len(self.ingredients)
+
+    @property
+    def num_effects(self) -> int:
+        """Number of realized effects"""
+        return len(self.realized_effects)
+
+    @property
+    def is_poison(self) -> bool:
+        """True if dominant effect is harmful"""
+        return self.dominant_effect.is_poison
+
+    @property
+    def is_beneficial(self) -> bool:
+        """True if dominant effect is helpful"""
+        return not self.dominant_effect.is_poison
+
+    @property
+    def effect_names(self) -> list[str]:
+        """List of all effect names in this potion"""
+        return [e.name for e in self.realized_effects]
 
     def print_self(self):
         print(f"{self.name}")
