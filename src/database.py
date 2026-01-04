@@ -77,6 +77,29 @@ class IngredientsDatabase:
         for name, ingredient in self._ingredients.items():
             print(f"{name}: {ingredient}")
 
+    def __repr__(self):
+        return f"IngredientsDatabase({len(self._ingredients)} ingredients loaded)"
+
+    def __len__(self):
+        """Returns total number of ingredients in database."""
+        return len(self._ingredients)
+
+    def __contains__(self, name: str) -> bool:
+        """Support: if 'ingredient' in db"""
+        return name in self._ingredients
+
+    def __getitem__(self, name: str):
+        """Support: ingredient = db['name']
+        Raises KeyError if ingredient not found (alternative to get_ingredient() which returns None)."""
+        if name not in self._ingredients:
+            raise KeyError(f"Ingredient '{name}' not found in database")
+        return self._ingredients[name]
+
+    def __iter__(self):
+        """Support: for ingredient in db
+        Yields Ingredient objects (not names)."""
+        return iter(self._ingredients.values())
+
 
 
 

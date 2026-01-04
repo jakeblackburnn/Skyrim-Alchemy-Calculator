@@ -397,3 +397,35 @@ class Inventory:
 
     def copy(self):
         return Inventory(self._items.copy())
+
+    def __repr__(self):
+        if self.is_empty():
+            return "Inventory(empty)"
+        items_preview = dict(list(self._items.items())[:5])
+        ellipsis = '...' if len(self._items) > 5 else ''
+        return (f"Inventory({self.unique_items()} types, {self.total_items()} total)\n"
+                f"  Items: {items_preview}{ellipsis}")
+
+    def __len__(self):
+        """Returns number of unique ingredient types."""
+        return self.unique_items()
+
+    def __contains__(self, name: str) -> bool:
+        """Support: if 'ingredient' in inventory"""
+        return self.has_ingredient(name, qty=1)
+
+    def __getitem__(self, name: str) -> int:
+        """Support: quantity = inventory['ingredient']
+        Raises KeyError if ingredient not in inventory."""
+        qty = self.get_quantity(name)
+        if qty == 0:
+            raise KeyError(f"Ingredient '{name}' not in inventory")
+        return qty
+
+    def __iter__(self):
+        """Support: for ingredient_name in inventory"""
+        return iter(self._items.keys())
+
+    def __bool__(self):
+        """Support: if inventory (False when empty)"""
+        return not self.is_empty()

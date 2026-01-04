@@ -148,6 +148,10 @@ class Potion:
         """list of ingredients used"""
         return self.ingredients_list
 
+    def __repr__(self):
+        return f"{self.name}\nIngredients: {', '.join(self.ingredient_names)}\nValue: {self.total_value}"
+
+    # Deprecated - use __repr__
     def print_self(self):
         print(f"{self.name}")
         print(f"Ingredients: {', '.join(self.ingredient_names)}")
@@ -180,6 +184,8 @@ class Potion:
 
 if __name__ == "__main__":
 
+
+
     # Instantiate databases once
     ingredients_db = IngredientsDatabase()
     effects_db = EffectsDatabase()
@@ -188,10 +194,10 @@ if __name__ == "__main__":
 
     ingredients_names_1 = ["Emperor Parasol Moss", "River Betty"]
     potion_1 = Potion(ingredients_names_1, player, ingredients_db, effects_db)
-    potion_1.print_self()
+    print(potion_1)
 
     print("\n" + "="*50 + "\n")
 
     ingredients_names_2 = ["Blue Mountain Flower", "Hanging Moss"]
     potion_2 = Potion(ingredients_names_2, player, ingredients_db, effects_db)
-    potion_2.print_self()
+    print(potion_2)

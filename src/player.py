@@ -50,13 +50,18 @@ class Player:
 
 
     def print_self(self):
-        print(self.alchemy_skill, 
-              self.fortify_alchemy, 
-              self.alchemist_perk, 
+        print(self.alchemy_skill,
+              self.fortify_alchemy,
+              self.alchemist_perk,
               self.physician_perk,
-              self.benefactor_perk, 
-              self.poisoner_perk, 
+              self.benefactor_perk,
+              self.poisoner_perk,
               self.seeker_of_shadows)
+
+    def __repr__(self):
+        return (f"Player(skill={self.alchemy_skill}, fortify={self.fortify_alchemy}, "
+                f"alchemist={self.alchemist_perk}%, physician={self.physician_perk > 0}, "
+                f"benefactor={self.benefactor_perk > 0}, poisoner={self.poisoner_perk > 0})")
 
 if __name__ == "__main__":
     player = Player()

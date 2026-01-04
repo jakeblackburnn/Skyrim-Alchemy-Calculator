@@ -46,6 +46,10 @@ class RealizedEffect:
     def is_restore(self):
         return self.base.is_restore
 
+    def __repr__(self):
+        return (f"RealizedEffect('{self.name}', mag={self.magnitude}, "
+                f"dur={self.duration}, value={self.value})")
+
 class Effect:
 
     def __init__(self, name, mag, dur, cost, effect_type, variable_duration=False, description_template=None):
@@ -134,6 +138,18 @@ class Effect:
     def realize(self, player):
         """Create a RealizedEffect with computed stats for this player"""
         return RealizedEffect(self, player)
+
+    def __repr__(self):
+        if self.is_poison:
+            effect_type = "Poison"
+        elif self.is_fortify:
+            effect_type = "Fortify"
+        elif self.is_restore:
+            effect_type = "Restore"
+        else:
+            effect_type = "Other"
+        return (f"Effect('{self.name}', type={effect_type}, "
+                f"base_mag={self.base_mag}, base_dur={self.base_dur}, base_cost={self.base_cost})")
 
 
 
