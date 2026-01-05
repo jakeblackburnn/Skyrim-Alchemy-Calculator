@@ -6,8 +6,307 @@ The Skyrim Alchemy Calculator `src` module provides a complete Python API for si
 
 ---
 
+## Architecture & Common Workflows
+
+### Module Architecture
+
+The system uses a layered architecture with clear separation of concerns:
+
+```
+┌─────────────────────────────────────────────┐
+│  Data Layer (CSV Files)                     │
+│  - master_ingredients.csv (92+ ingredients) │
+│  - effects.csv (55 alchemy effects)         │
+└─────────────────┬───────────────────────────┘
+                  ↓
+┌─────────────────────────────────────────────┐
+│  Database Layer (database.py)               │
+│  - IngredientsDatabase: O(1) lookups        │
+│  - EffectsDatabase: Effect definitions      │
+└─────────────────┬───────────────────────────┘
+                  ↓
+┌─────────────────────────────────────────────┐
+│  Domain Models                              │
+│  - Player (player.py): Skills & perks       │
+│  - Ingredient (ingredient.py): 4 effects    │
+│  - Effect (effect.py): Scaling formulas     │
+│  - RealizedEffect: Player-computed stats    │
+└─────────────────┬───────────────────────────┘
+                  ↓
+┌─────────────────────────────────────────────┐
+│  Inventory Management (inventory.py)        │
+│  - Quantity tracking                        │
+│  - Generation strategies (vendor/random)    │
+│  - Consumption operations                   │
+└─────────────────┬───────────────────────────┘
+                  ↓
+┌─────────────────────────────────────────────┐
+│  Potion Crafting (potion.py)                │
+│  - 2-3 ingredient combinations              │
+│  - Shared effect detection                  │
+│  - Purity perk filtering                    │
+│  - Value calculation                        │
+└─────────────────┬───────────────────────────┘
+                  ↓
+┌─────────────────────────────────────────────┐
+│  Simulation Orchestration                   │
+│  - AlchemySimulator (alchemy_simulator.py)  │
+│  - Exhaustive combination generation        │
+│  - Greedy crafting algorithms               │
+└─────────────────────────────────────────────┘
+```
+
+### Data Flow Pipeline
+
+**Phase 1: Initialization**
+```
+CSV Files → Database.__init__() → In-memory dictionaries
+         → Player.from_dict(stats) → Player instance
+         → Ingredient list → AlchemySimulator.__init__()
+```
+
+**Phase 2: Combination Generation**
+```
+itertools.combinations(ingredients, 2) → Filter by shared effects
+itertools.combinations(ingredients, 3) → Filter by shared effects
+                                       → List of valid combinations
+```
+
+**Phase 3: Potion Creation (per combination)**
+```
+Potion.__init__(ingredients, player, dbs):
+  1. Find common effects (set intersection of ingredient effects)
+  2. Retrieve Effect objects from EffectsDatabase
+  3. Apply ingredient-specific magnitude/duration overrides
+  4. Compute RealizedEffect for each (magnitude/duration scaled by player)
+  5. Apply Purity perk filtering (remove opposite effect types)
+  6. Apply Benefactor/Poisoner perks to matching effects
+  7. Calculate total_value = sum(effect.value for effect in realized_effects)
+  → Potion instance
+```
+
+### Common Workflows
+
+#### Workflow 1: Simple Potion Discovery
+**Use case:** "What potions can I make with these specific ingredients?"
+
+```python
+from src.alchemy_simulator import AlchemySimulator
+
+# Define player stats
+player_stats = {
+    "alchemy_skill": 50,
+    "fortify_alchemy": 100,
+    "alchemist_perk": 2,      # Rank 0-5 (each adds 20%)
+    "physician_perk": True,
+    "benefactor_perk": False,
+    "poisoner_perk": False,
+    "seeker_of_shadows": False,
+    "purity_perk": False
+}
+
+# Create simulator with ingredient list
+ingredients = ["Wheat", "Blue Mountain Flower", "Purple Mountain Flower"]
+sim = AlchemySimulator(player_stats, ingredients)
+
+# Access results (sorted by value)
+top_potions = sorted(sim.potions, key=lambda p: p.total_value, reverse=True)[:5]
+for potion in top_potions:
+    print(f"{potion.name}: {potion.total_value} gold")
+    print(f"  Ingredients: {', '.join(potion.ingredient_names)}")
+```
+
+#### Workflow 2: Inventory Management
+**Use case:** "Generate realistic inventory and optimize potion crafting"
+
+```python
+from src.database import IngredientsDatabase
+from src.inventory import Inventory
+from src.alchemy_simulator import AlchemySimulator
+
+# Load database
+db = IngredientsDatabase()
+
+# Generate game-accurate vendor inventory
+inventory = Inventory.generate_vendor(db)
+print(f"Vendor has {inventory.unique_items()} types, {inventory.total_items()} total")
+
+# Create simulator and set inventory
+player_stats = {"alchemy_skill": 75, "fortify_alchemy": 120, ...}
+sim = AlchemySimulator(player_stats)
+sim.set_inventory(inventory)
+
+# Run greedy algorithm (repeatedly craft highest-value potions)
+crafted = sim.exhaust_inventory(strategy="greedy-basic")
+total_value = sum(p.total_value for p in crafted)
+print(f"Crafted {len(crafted)} potions worth {total_value} gold")
+
+# Inventory is consumed, check remaining
+print(f"Remaining items: {inventory.total_items()}")
+```
+
+#### Workflow 3: Dynamic Player Stats Analysis
+**Use case:** "Compare potion values across different skill/perk levels"
+
+```python
+from src.alchemy_simulator import AlchemySimulator
+
+ingredients = ["Bear Claws", "Blue Mountain Flower", "Wheat"]
+base_stats = {
+    "alchemy_skill": 50,
+    "fortify_alchemy": 0,
+    "alchemist_perk": 0,
+    "physician_perk": False,
+    "benefactor_perk": False,
+    "poisoner_perk": False,
+    "seeker_of_shadows": False,
+    "purity_perk": False
+}
+
+# Analyze perk impact
+for perk_rank in range(6):
+    stats = base_stats.copy()
+    stats["alchemist_perk"] = perk_rank
+
+    sim = AlchemySimulator(stats, ingredients)
+    avg_value = sum(p.total_value for p in sim.potions) / len(sim.potions)
+    print(f"Alchemist Rank {perk_rank}: avg {avg_value:.1f} gold per potion")
+```
+
+### Key Integration Patterns
+
+#### Database Initialization
+Databases load CSV files once during initialization and should be reused:
+
+```python
+from src.database import IngredientsDatabase, EffectsDatabase
+
+# Load once (reads all CSVs into memory)
+ingredients_db = IngredientsDatabase()  # Defaults to data/ directory
+effects_db = EffectsDatabase()
+
+# Reuse across many simulations (O(1) lookups)
+ingredient = ingredients_db.get_ingredient("Wheat")
+ingredient = ingredients_db["Wheat"]  # Alternative syntax (raises KeyError if missing)
+
+# Iterate and check membership
+if "Wheat" in ingredients_db:
+    for ing in ingredients_db:  # Yields Ingredient objects
+        print(ing.name)
+```
+
+#### Inventory Operations
+
+**Creation Methods:**
+```python
+from src.inventory import Inventory
+from src.database import IngredientsDatabase
+
+db = IngredientsDatabase()
+
+# Method 1: From dictionary
+inv = Inventory({"Wheat": 5, "Blue Mountain Flower": 3})
+
+# Method 2: Generate normal distribution (uniform random selection)
+inv = Inventory.generate_normal(db, size=35)
+
+# Method 3: Generate rarity-weighted (biased toward common ingredients)
+inv = Inventory.generate_random_weighted(db, size=30)
+
+# Method 4: Generate vendor (game-accurate Bernoulli sampling)
+inv = Inventory.generate_vendor(db)
+
+# Method 5: From ingredient list (converts duplicates to quantities)
+inv = Inventory.from_ingredients(["Wheat", "Wheat", "Blue Mountain Flower"])
+# Result: {"Wheat": 2, "Blue Mountain Flower": 1}
+```
+
+**Consumption and State:**
+```python
+# Check availability
+if inv.has_ingredient("Wheat", qty=2):
+    inv.consume("Wheat")  # Remove 1
+
+# Atomic recipe consumption (all-or-nothing)
+success = inv.consume_recipe(["Wheat", "Blue Mountain Flower", "Wheat"])
+# Returns False if any ingredient unavailable (no changes made)
+
+# State checking
+inv.total_items()        # Sum of all quantities
+inv.unique_items()       # Number of distinct ingredient types
+inv.is_empty()          # True if no items
+inv.get_available_ingredients()  # List of ingredient names with qty > 0
+
+# Pythonic interface
+if inv:                           # Truthy when non-empty
+if "Wheat" in inv:               # Check membership
+qty = inv["Wheat"]               # Get quantity (raises KeyError if absent)
+for name in inv:                 # Iterate ingredient names
+    print(f"{name}: {inv[name]}")
+```
+
+#### Effect Realization
+
+Effects exist in two forms:
+- **Effect**: Base definition from `effects.csv` with default magnitude/duration
+- **RealizedEffect**: Player-specific computed values
+
+```python
+from src.database import EffectsDatabase
+from src.player import Player
+
+effects_db = EffectsDatabase()
+player = Player(skill=75, fortify=100, alchemist_perk_level=3)
+
+# Get base effect
+effect = effects_db.default_effect("Restore Health")
+print(f"Base magnitude: {effect.base_mag}")
+
+# Realize for specific player (scales based on variable_duration flag)
+realized = effect.realize(player)
+print(f"Realized magnitude: {realized.magnitude}")
+print(f"Realized duration: {realized.duration}")
+print(f"Gold value: {realized.value}")
+
+# Scaling formula:
+# factor = 4 * (1 + skill/200) * (1 + fortify/100) * perk_multipliers
+# If variable_duration=False: magnitude scales, duration stays base
+# If variable_duration=True: magnitude stays base, duration scales
+# value = floor(base_cost * mag^1.1 * (dur/10)^1.1)
+```
+
+### Design Decisions
+
+**1. Eager Potion Generation**
+- `AlchemySimulator.generate_potions()` is called immediately when ingredients are provided
+- Trade-off: Upfront computation cost for instant access to results
+- Use case: Interactive UIs benefit from immediate feedback
+
+**2. Database Loading**
+- Databases read all CSV files into memory during `__init__`
+- O(1) ingredient/effect lookups via dictionaries
+- Load once, reuse across thousands of simulations
+
+**3. Purity Perk Application**
+- Applied per-potion in `Potion.__init__`, not globally
+- Filters out opposite effect types based on dominant effect
+- Dominant effect = highest-value effect in potion
+
+**4. Inventory Mutability**
+- `Inventory.consume()` and `consume_recipe()` mutate state
+- Use `inventory.copy()` to preserve original for comparisons
+- `AlchemySimulator.exhaust_inventory()` modifies the inventory in-place
+
+**5. Player Stats Dictionary**
+- `Player.from_dict()` converts perk levels to percentage bonuses
+- Example: `alchemist_perk_level: 3` → `alchemist_perk: 60%`
+- Simplifies JSON serialization for web APIs
+
+---
+
 ## Table of Contents
 
+0. [Architecture & Common Workflows](#architecture--common-workflows) - System overview and usage patterns
 1. [Player Module](#module-srcplayerpy) - Character skills and perks
 2. [Effect Module](#module-srceffectpy) - Alchemical effects and scaling
 3. [Ingredient Module](#module-srcingredientpy) - Craftable ingredients
