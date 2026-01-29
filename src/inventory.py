@@ -401,10 +401,10 @@ class Inventory:
     def __repr__(self):
         if self.is_empty():
             return "Inventory(empty)"
-        items_preview = dict(list(self._items.items())[:5])
-        ellipsis = '...' if len(self._items) > 5 else ''
-        return (f"Inventory({self.unique_items()} types, {self.total_items()} total)\n"
-                f"  Items: {items_preview}{ellipsis}")
+        lines = [f"Inventory({self.unique_items()} types, {self.total_items()} total)"]
+        for name, qty in self._items.items():
+            lines.append(f"  {name}: {qty}")
+        return "\n".join(lines)
 
     def __len__(self):
         """Returns number of unique ingredient types."""
