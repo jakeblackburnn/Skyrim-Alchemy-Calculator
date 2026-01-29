@@ -1,9 +1,10 @@
 from itertools import combinations
-from .player import Player
 from .potion import Potion
+from .player import Player
+from .inventory import Inventory
 from .database import IngredientsDatabase, EffectsDatabase
 
-class AlchemySimulator:
+class Alembic:
 
     def __init__(self, player_stats, ingredients_list=None):
         self.ingredients_list = ingredients_list
@@ -109,7 +110,6 @@ class AlchemySimulator:
         Raises:
             TypeError: If inventory is not an Inventory instance
         """
-        from .inventory import Inventory
 
         if not isinstance(inventory, Inventory):
             raise TypeError(f"Expected Inventory instance, got {type(inventory)}")
@@ -220,3 +220,27 @@ class AlchemySimulator:
 
         return potions_made
 
+
+def main():
+
+    db = IngredientsDatabase()
+    alembic = Alembic.from_base_player()
+
+    print("generating inventory...")
+    inv = Inventory.generate_normal(db, 20)
+    alembic.set_inventory(inv)
+
+    print("printing inventory\n=================\n")
+    print(inv)
+
+    print("\ncreating potions...")
+    potions = alembic.exhaust_inventory()
+
+    print("printing potions\n================\n")
+    for potion in potions:
+        print(potion)
+
+
+
+if __name__ == "__main__":
+    main()
