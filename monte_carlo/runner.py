@@ -15,10 +15,35 @@ from dataclasses import dataclass
 from typing import Optional
 
 @dataclass
-class MC_Config:
+class MonteCarloConfig:
     num_simulations: int = 1000
     num_workers: int = 1
     seed: Optional[int] = None
     progress_bar: bool = True
     checkpoints: bool = True
     checkpoint_freq: Optional[int] = 100
+
+class MonteCarloResult:
+    pass
+
+class AlchemySim:
+    # classmethods for different types of simulations?
+    pass
+
+class MonteCarlo: # main runner object
+    pass
+
+
+"""
+usage example ideas:
+
+config = MonteCarloConfig(
+                ...
+            )
+sim = AlchemySim.vendor_analysis()
+mc = MonteCarlo(config)
+
+result: MonteCarloResult = mc.run(sim)
+
+result.save_to_csv()
+"""
