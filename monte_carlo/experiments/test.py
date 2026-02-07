@@ -1,6 +1,6 @@
-from .runner import Experiment
+from ..runner import Experiment, MonteCarloResult
 
 class TestExperiment(Experiment):
 
     def run_once(self):
-        return "test experiment ran once."
+        return {"value": 100}
