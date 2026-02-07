@@ -11,8 +11,8 @@ Created by J. Blackburn - Feb 1 2026
     4. main runner class
 """
 from abc import abstractmethod
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
+from typing import Dict, List, Any, Optional
 
 @dataclass
 class MonteCarloConfig:
@@ -23,37 +23,47 @@ class MonteCarloConfig:
     checkpoints: bool = False
     checkpoint_freq: Optional[int] = 100
 
+    def to_dict(self) -> Dict[str, any]:
+        return {
+            "num_simulations": self.num_simulations,
+            "num_workers": self.num_workers,
+            "seed": self.seed,
+            "checkpoints": self.checkpoints,
+            "checkpoint_freq": self.checkpoint_freq,
+        }
+
+@dataclass
 class MonteCarloResult:
-    pass
+    config_dict: Dict[str, any] = field(default_factory=lambda: {"issue": "no config specified"})
+    run_results: List[Dict[str, any]] = field(default_factory=list)
+
+    
+    def add_run(self, run: Dict[str, any]):
+        self.run_results.append(run)
+
+    def to_dataframe(self):
+        pass
+
+    def summary(self):
+        print(f"configuration:\n{self.config_dict}\n")
+        print(f"results:\n{self.run_results}\n")
 
 class Experiment:
-
     @abstractmethod
-    def run_once(self):
+    def run_once(self) -> Dict[str, any]:
         pass
 
 class MonteCarlo: # main runner object
 
     def __init__(self, config: MonteCarloConfig):
         self.config = config
-        print(f"created mc runner.\nconfig:\n{config}")
+        print(f"created mc runner.\nconfig:\n{config.to_dict()}")
 
     def run(self, experiment: Experiment):
         print("running mc experiment...")
+        results = MonteCarloResult(config_dict=self.config.to_dict())
+
         for exp in range(self.config.num_simulations):
-            result = experiment.run_once()
-            print(f"[{exp} / {self.config.num_simulations}: {result}")
+            results.add_run(experiment.run_once())
 
-"""
-usage example ideas:
-
-config = MonteCarloConfig(
-                ...
-            )
-sim = AlchemySim.vendor_analysis()
-mc = MonteCarlo(config)
-
-result: MonteCarloResult = mc.run(sim)
-
-result.save_to_csv()
-"""
+        results.summary()
