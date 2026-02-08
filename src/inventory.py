@@ -1,8 +1,9 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
 import random
 import numpy as np
 
 from .database import IngredientsDatabase
+from .ingredient import Ingredient
 
 
 class Inventory:
@@ -123,14 +124,14 @@ class Inventory:
         'rare': (1, 2)
     }
 
-    def __init__(self, items: Dict[Ingredient, int] = None):
+    def __init__(self, items: Optional[Dict[Ingredient, int]] = None):
         self._items = items.copy() if items is not None else {}
 
     def get_available_ingredients(self) -> List[Ingredient]:
         return list(self._items.keys())
 
     def get_quantity(self, ing: Ingredient) -> int:
-        return self._items.get(name, 0)
+        return self._items.get(ing, 0)
 
     def has_ingredient(self, ing: Ingredient, qty: int = 1) -> bool:
         return self.get_quantity(ing) >= qty
@@ -193,7 +194,7 @@ class Inventory:
         return max(min_qty, min(max_qty, int(raw_value)))
 
     @classmethod
-    def generate_normal(cls, db, size: int = None, qty_params: dict = None):
+    def generate_normal(cls, db, size: Optional[int] = None, qty_params: Optional[dict] = None):
         if size is None:
             size = cls._calculate_inventory_size('normal')
 
@@ -216,43 +217,41 @@ class Inventory:
                 params['min_qty'],
                 params['max_qty']
             )
-            items[ing.name] = qty
+            items[ing] = qty
 
         return cls(items)
 
     @classmethod
-    def generate_random_weighted(cls, db, size: int = None, qty_params: dict = None):
+    def generate_random_weighted(cls, db, size: Optional[int] = None, qty_params: Optional[dict] = None):
         if size is None:
             size = cls._calculate_inventory_size('random_weighted')
 
         all_ingredients = db.get_all_ingredients()
         weights = cls._calculate_weights(all_ingredients, 'random_weighted')
 
-        # Use set to track unique selections
-        selected_names = set()
+        # Use set to track unique selections (Ingredient objects)
+        selected_ingredients = set()
 
         # Iteratively sample until we have desired size or exhaust attempts
         max_attempts = size * 3  # Allow some buffer for deduplication
         attempts = 0
 
-        while len(selected_names) < size and attempts < max_attempts:
+        while len(selected_ingredients) < size and attempts < max_attempts:
             # Sample with replacement, then deduplicate
-            remaining = size - len(selected_names)
+            remaining = size - len(selected_ingredients)
             batch = random.choices(all_ingredients, weights=weights, k=remaining)
-            selected_names.update(ing.name for ing in batch)
+            selected_ingredients.update(batch)
             attempts += 1
 
         # Use provided params or default
         params = qty_params if qty_params is not None else cls.QUANTITY_PARAMS_WEIGHTED
 
         items = {}
-        for name in selected_names:
-            # Look up ingredient to get rarity
-            ing = db.get_ingredient(name)
-            rarity = ing.rarity
-
+        for ing in selected_ingredients:
             # Get rarity-specific params (fallback to 'common' if rarity not in dict)
-            rarity_params = params.get(rarity, params.get('common'))
+            rarity_params = params.get(ing.rarity)
+            if rarity_params is None:
+                rarity_params = params['common']
 
             qty = cls._sample_chi2_quantity(
                 rarity_params['df'],
@@ -260,12 +259,12 @@ class Inventory:
                 rarity_params['min_qty'],
                 rarity_params['max_qty']
             )
-            items[name] = qty
+            items[ing] = qty
 
         return cls(items)
 
     @classmethod
-    def generate_vendor(cls, db, qty_params: dict = None):
+    def generate_vendor(cls, db, qty_params: Optional[dict] = None):
         # Load all ingredients
         all_ingredients = db.get_all_ingredients()
 
@@ -285,11 +284,11 @@ class Inventory:
 
             # Assign to tier
             if ing.rarity == 'common':
-                common_pool.append(ing.name)
+                common_pool.append(ing)
             elif ing.rarity == 'uncommon':
-                uncommon_pool.append(ing.name)
+                uncommon_pool.append(ing)
             elif ing.rarity == 'rare':
-                rare_pool.append(ing.name)
+                rare_pool.append(ing)
 
         # Run Bernoulli trials for each tier
         selected_ingredients = []
@@ -313,32 +312,28 @@ class Inventory:
                     selected_ingredients.append(random.choice(rare_pool))
 
         # Deduplicate
-        unique_names = set(selected_ingredients)
+        unique_ingredients = set(selected_ingredients)
 
         # Use provided ranges or default
         ranges = qty_params if qty_params is not None else cls.VENDOR_QUANTITY_RANGES
 
         items = {}
-        for name in unique_names:
-            # Look up ingredient to get rarity
-            ing = db.get_ingredient(name)
-            rarity = ing.rarity
-
+        for ing in unique_ingredients:
             # Get range for this rarity (fallback to (1, 3))
-            min_q, max_q = ranges.get(rarity, (1, 3))
+            min_q, max_q = ranges.get(ing.rarity, (1, 3))
 
             # Sample quantity uniformly from range
             qty = random.randint(min_q, max_q)
-            items[name] = qty
+            items[ing] = qty
 
         return cls(items)
 
-    def add(self, name: str, qty: int = 1):
+    def add(self, ing: Ingredient, qty: int = 1):
         if qty <= 0:
             raise ValueError(f"Quantity must be positive, got {qty}")
-        self._items[name] = self._items.get(name, 0) + qty
+        self._items[ing] = self._items.get(ing, 0) + qty
 
-    def to_ingredient_list(self) -> List[str]:
+    def to_ingredient_list(self) -> List[Ingredient]:
         return self.get_available_ingredients()
 
     def copy(self):
@@ -348,20 +343,20 @@ class Inventory:
         if self.is_empty():
             return "Inventory(empty)"
         lines = [f"Inventory({self.unique_items()} types, {self.total_items()} total)"]
-        for name, qty in self._items.items():
-            lines.append(f"  {name}: {qty}")
+        for ing, qty in self._items.items():
+            lines.append(f"  {ing.name}: {qty}")
         return "\n".join(lines)
 
     def __len__(self):
         return self.unique_items()
 
-    def __contains__(self, name: str) -> bool:
-        return self.has_ingredient(name, qty=1)
+    def __contains__(self, ing: Ingredient) -> bool:
+        return self.has_ingredient(ing, qty=1)
 
-    def __getitem__(self, name: str) -> int:
-        qty = self.get_quantity(name)
+    def __getitem__(self, ing: Ingredient) -> int:
+        qty = self.get_quantity(ing)
         if qty == 0:
-            raise KeyError(f"Ingredient '{name}' not in inventory")
+            raise KeyError(f"Ingredient '{ing.name}' not in inventory")
         return qty
 
     def __iter__(self):
