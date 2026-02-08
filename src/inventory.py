@@ -2,6 +2,8 @@ from typing import Dict, List
 import random
 import numpy as np
 
+from .database import IngredientsDatabase
+
 
 class Inventory:
 
@@ -121,17 +123,17 @@ class Inventory:
         'rare': (1, 2)
     }
 
-    def __init__(self, items: Dict[str, int] = None):
+    def __init__(self, items: Dict[Ingredient, int] = None):
         self._items = items.copy() if items is not None else {}
 
-    def get_available_ingredients(self) -> List[str]:
+    def get_available_ingredients(self) -> List[Ingredient]:
         return list(self._items.keys())
 
-    def get_quantity(self, name: str) -> int:
+    def get_quantity(self, ing: Ingredient) -> int:
         return self._items.get(name, 0)
 
-    def has_ingredient(self, name: str, qty: int = 1) -> bool:
-        return self.get_quantity(name) >= qty
+    def has_ingredient(self, ing: Ingredient, qty: int = 1) -> bool:
+        return self.get_quantity(ing) >= qty
 
     def total_items(self) -> int:
         return sum(self._items.values())
@@ -142,32 +144,26 @@ class Inventory:
     def is_empty(self) -> bool:
         return len(self._items) == 0
 
-    def consume(self, name: str) -> bool:
-        if not self.has_ingredient(name, 1):
+    def consume(self, ing: Ingredient) -> bool:
+        if not self.has_ingredient(ing):
             return False
 
-        self._items[name] -= 1
-        if self._items[name] == 0:
-            del self._items[name]
+        self._items[ing] -= 1
+        if self._items[ing] == 0:
+            del self._items[ing]
 
         return True
 
-    def consume_recipe(self, ingredient_names: List[str]) -> bool:
-        # Count required quantities
-        required = {}
-        for name in ingredient_names:
-            required[name] = required.get(name, 0) + 1
+    def consume_recipe(self, ings: List[Ingredient]) -> bool:
 
-        # Check availability (fail fast)
-        for name, qty in required.items():
-            if not self.has_ingredient(name, qty):
+        for ing in ings:
+            if not self.has_ingredient(ing):
                 return False
 
-        # All available - consume atomically
-        for name, qty in required.items():
-            self._items[name] -= qty
-            if self._items[name] == 0:
-                del self._items[name]
+        for ing in ings:
+            self._items[ing] -= 1
+            if self._items[ing] == 0:
+                del self._items[ing]
 
         return True
 
@@ -193,35 +189,11 @@ class Inventory:
 
     @staticmethod
     def _sample_chi2_quantity(df, scale, min_qty, max_qty):
-        """Sample quantity from chi-squared distribution using numpy.
-
-        Uses Gamma distribution: Chi2(df) = Gamma(df/2, 2)
-
-        Args:
-            df: Degrees of freedom (controls mean and variance)
-            scale: Multiplier for distribution
-            min_qty: Minimum quantity (clamp floor)
-            max_qty: Maximum quantity (clamp ceiling)
-
-        Returns:
-            int: Sampled quantity in [min_qty, max_qty]
-        """
         raw_value = np.random.gamma(df / 2.0, 2.0) * scale
         return max(min_qty, min(max_qty, int(raw_value)))
 
     @classmethod
     def generate_normal(cls, db, size: int = None, qty_params: dict = None):
-        """Generate inventory with uniform random ingredient selection.
-
-        Args:
-            db: IngredientsDatabase instance
-            size: Number of unique ingredients (default: random from Normal(35, 10))
-            qty_params: Custom parameters dict with keys: df, scale, min_qty, max_qty
-                       If None, uses class constant QUANTITY_PARAMS_NORMAL
-
-        Returns:
-            Inventory: New inventory instance with chi-squared quantity sampling
-        """
         if size is None:
             size = cls._calculate_inventory_size('normal')
 
@@ -250,17 +222,6 @@ class Inventory:
 
     @classmethod
     def generate_random_weighted(cls, db, size: int = None, qty_params: dict = None):
-        """Generate inventory with rarity-weighted ingredient selection.
-
-        Args:
-            db: IngredientsDatabase instance
-            size: Number of unique ingredients (default: random from Normal(35, 10))
-            qty_params: Custom rarity-to-params dict (e.g., {'common': {...}, 'rare': {...}})
-                       If None, uses class constant QUANTITY_PARAMS_WEIGHTED
-
-        Returns:
-            Inventory: New inventory instance with rarity-based chi-squared quantity sampling
-        """
         if size is None:
             size = cls._calculate_inventory_size('random_weighted')
 
@@ -305,16 +266,6 @@ class Inventory:
 
     @classmethod
     def generate_vendor(cls, db, qty_params: dict = None):
-        """Generate vendor inventory using game-accurate Bernoulli sampling.
-
-        Args:
-            db: IngredientsDatabase instance
-            qty_params: Custom rarity-to-range dict (e.g., {'common': (1, 5), 'rare': (1, 2)})
-                       If None, uses class constant VENDOR_QUANTITY_RANGES
-
-        Returns:
-            Inventory: New vendor inventory instance with quantity ranges per rarity
-        """
         # Load all ingredients
         all_ingredients = db.get_all_ingredients()
 
@@ -387,11 +338,6 @@ class Inventory:
             raise ValueError(f"Quantity must be positive, got {qty}")
         self._items[name] = self._items.get(name, 0) + qty
 
-    @classmethod
-    def from_ingredients(cls, ingredient_names: List[str]):
-        items = {name: 1 for name in set(ingredient_names)}
-        return cls(items)
-
     def to_ingredient_list(self) -> List[str]:
         return self.get_available_ingredients()
 
@@ -407,25 +353,32 @@ class Inventory:
         return "\n".join(lines)
 
     def __len__(self):
-        """Returns number of unique ingredient types."""
         return self.unique_items()
 
     def __contains__(self, name: str) -> bool:
-        """Support: if 'ingredient' in inventory"""
         return self.has_ingredient(name, qty=1)
 
     def __getitem__(self, name: str) -> int:
-        """Support: quantity = inventory['ingredient']
-        Raises KeyError if ingredient not in inventory."""
         qty = self.get_quantity(name)
         if qty == 0:
             raise KeyError(f"Ingredient '{name}' not in inventory")
         return qty
 
     def __iter__(self):
-        """Support: for ingredient_name in inventory"""
         return iter(self._items.keys())
 
     def __bool__(self):
-        """Support: if inventory (False when empty)"""
         return not self.is_empty()
+
+
+def main():
+
+    ing_db = IngredientsDatabase()
+    inv = Inventory.generate_normal(ing_db, 7)
+
+    print(inv)
+
+
+
+if __name__ == "__main__":
+    main()

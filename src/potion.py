@@ -1,18 +1,15 @@
 import numpy as np
 from .ingredient import Ingredient
-from .database import IngredientsDatabase, EffectsDatabase
+from .database import IngredientsDatabase
 from .effect import Effect
 from .player import Player
 
 class Potion:
 
-    def __init__(self, ingredient_names, player, ingredients_db, effects_db):
-        # Validate ingredient count (must be 2 or 3)
-        if len(ingredient_names) not in [2, 3]:
-            raise ValueError(f"Potion requires 2 or 3 ingredients, got {len(ingredient_names)}")
-
-        # Get all ingredients
-        ingredients = [ingredients_db.get_ingredient(name) for name in ingredient_names]
+    def __init__(self, ingredients, player, ingredients_db):
+        # Validate ingredient count
+        if len(ingredients) not in [2, 3]:
+            raise ValueError(f"Potion requires 2 or 3 ingredients, got {len(ingredients)}")
 
         # Find common effects across ingredients
         all_effect_names = []
@@ -27,6 +24,7 @@ class Potion:
 
         # Validate that common effects exist
         if not common_effect_names:
+            ingredient_names = [ing.name for ing in ingredients]
             raise ValueError(f"No common effects found among ingredients: {ingredient_names}")
 
         # Build Effect objects only for common effects, grouped by effect name
@@ -37,7 +35,10 @@ class Potion:
             for effect_name in ingredient.get_effect_names():
                 if effect_name in common_effect_names:
                     contributing_ingredients.add(ingredient.name)
-                    effect = effects_db.ingredient_effect(effect_name, ingredient)
+
+                    # create ingredient effect object
+                    effect = ingredients_db.ingredient_effect(effect_name, ingredient)
+
                     if effect_name not in effect_groups:
                         effect_groups[effect_name] = []
                     effect_groups[effect_name].append(effect)
@@ -99,7 +100,7 @@ class Potion:
         self.total_value = sum(e.value for e in self.realized_effects)
 
         self.ingredients_list = ingredients
-        self.ingredient_names = ingredient_names
+        self.ingredient_names = [ing.name for ing in ingredients]
 
         # Store dominant effect as realized
         self.dominant_effect = next(e for e in self.realized_effects if e.base.name == dominant_base.name)
@@ -151,16 +152,6 @@ class Potion:
     def __repr__(self):
         return f"{self.name}\nIngredients: {', '.join(self.ingredient_names)}\nValue: {self.total_value}"
 
-    # Deprecated - use __repr__
-    def print_self(self):
-        print(f"{self.name}")
-        print(f"Ingredients: {', '.join(self.ingredient_names)}")
-        print(f"Total Value: {self.total_value} gold")
-        print(f"Number of Effects: {len(self.realized_effects)}")
-        print("\nEffects:")
-        for effect in self.realized_effects:
-            print(f"  - {effect.get_description()}")
-
     def to_dict(self):
         """Serialize potion to JSON-compatible dict for API responses."""
         return {
@@ -183,21 +174,23 @@ class Potion:
 
 
 if __name__ == "__main__":
-
-
-
-    # Instantiate databases once
-    ingredients_db = IngredientsDatabase()
-    effects_db = EffectsDatabase()
+    ing_db = IngredientsDatabase()
 
     player = Player(skill=40, alchemist_perk_level=1)
 
-    ingredients_names_1 = ["Emperor Parasol Moss", "River Betty"]
-    potion_1 = Potion(ingredients_names_1, player, ingredients_db, effects_db)
+    # Get ingredient objects
+    ings_1 = [
+        ing_db.get_ingredient("Emperor Parasol Moss"),
+        ing_db.get_ingredient("River Betty")
+    ]
+    potion_1 = Potion(ings_1, player, ing_db)
     print(potion_1)
 
     print("\n" + "="*50 + "\n")
 
-    ingredients_names_2 = ["Blue Mountain Flower", "Hanging Moss"]
-    potion_2 = Potion(ingredients_names_2, player, ingredients_db, effects_db)
+    ings_2 = [
+        ing_db.get_ingredient("Blue Mountain Flower"),
+        ing_db.get_ingredient("Hanging Moss")
+    ]
+    potion_2 = Potion(ings_2, player, ing_db)
     print(potion_2)
