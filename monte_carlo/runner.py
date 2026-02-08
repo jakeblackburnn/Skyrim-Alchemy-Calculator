@@ -63,7 +63,7 @@ class MonteCarlo: # main runner object
         print("running mc experiment...")
         results = MonteCarloResult(config_dict=self.config.to_dict())
 
-        for exp in range(self.config.num_simulations):
-            results.add_run(experiment.run_once())
+        for run_idx in range(self.config.num_simulations):
+            results.add_run(experiment.run_once(run_idx))
 
         results.summary()
