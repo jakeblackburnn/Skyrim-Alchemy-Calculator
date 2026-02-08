@@ -2,60 +2,40 @@ from itertools import combinations
 from .potion import Potion
 from .player import Player
 from .inventory import Inventory
-from .database import IngredientsDatabase, EffectsDatabase
+from .database import IngredientsDatabase
 
 class Alembic:
 
-    def __init__(self, player_stats, ingredients_list=None):
-        self.ingredients_list = ingredients_list
-        self.player = Player.from_dict(player_stats)
-        self.ingredients_db = IngredientsDatabase()
-        self.effects_db = EffectsDatabase()
-        self._inventory = None  # Add inventory state tracking
+    def __init__(self, player, inventory=None):
+        self._ing_db = IngredientsDatabase()
+        self.player = player
+        self.inventory = inventory  
 
         # Only generate potions if ingredients provided
-        if ingredients_list is not None:
-            self.generate_potions()
+        if inventory is not None:
+            self._set_all_valid_potions()
         else:
             self.potions = []  # Initialize empty list
 
     @classmethod
-    def from_base_player(cls, ingredients_list=None):
-        """Create an AlchemySimulator with a default Player (skill=15, no perks).
+    def from_base_player(cls, inventory=None):
+        return cls(Player(), inventory)
 
-        Args:
-            ingredients_list: Optional list of ingredient names. If None,
-                            creates simulator without generating potions.
-        """
-        base_player_stats = {
-            "alchemy_skill": 15,
-            "fortify_alchemy": 0,
-            "alchemist_perk": 0,
-            "physician_perk": False,
-            "benefactor_perk": False,
-            "poisoner_perk": False,
-            "seeker_of_shadows": False,
-            "purity_perk": False
-        }
-        return cls(base_player_stats, ingredients_list)
+    def _set_all_valid_potions(self):
+        ingredients_list = self.inventory.get_available_ingredients()
+        valid_combos = []
 
-    def generate_potions(self):
-        valid_combinations = []
-
-        for combo in combinations(self.ingredients_list, 2):
+        for combo in combinations(ingredients_list, 2):
             if self._has_shared_effects(combo):
-                valid_combinations.append(list(combo))
+                valid_combos.append(list(combo))
 
-        for combo in combinations(self.ingredients_list, 3):
+        for combo in combinations(ingredients_list, 3):
             if self._has_shared_effects(combo):
-                valid_combinations.append(list(combo))
+                valid_combos.append(list(combo))
 
-        self.potions = [Potion(combination, self.player, self.ingredients_db, self.effects_db) for combination in valid_combinations]
+        self.potions = [Potion(combo, self.player, self._ing_db) for combo in valid_combos]
 
-    def _has_shared_effects(self, ingredient_names):
-        # Get all ingredients
-        ingredients = [self.ingredients_db.get_ingredient(name) for name in ingredient_names]
-
+    def _has_shared_effects(self, ingredients):
         # Get effect sets for each ingredient
         ingredient_effects = [set(ing.get_effect_names()) for ing in ingredients]
 
@@ -71,20 +51,18 @@ class Alembic:
 
         return True
 
-    def print_potions(self):
-        print(f"Total Potions: {len(self.potions)}\n")
-        sorted_potions = sorted(self.potions, key=lambda p: p.total_value, reverse=True)
-        for i, potion in enumerate(sorted_potions, 1):
-            print(f"--- Potion {i} ---")
-            potion.print_self()
-            print()
+    def get_value_sorted_potions(self):
+        return sorted(self.potions, key=lambda p: p.total_value, reverse=True)
+
+    def filter_by_ingredient(self, ingredient=Ingredient()):
+        return filter(lambda p: any([i is ingredient for i in p.ingredients()]), self.potions)
 
 
-    def update_player(self, player_stats):
-        self.player = Player.from_dict(player_stats)
-        # Only regenerate if we have ingredients
-        if self.ingredients_list is not None:
-            self.generate_potions()
+    # sets the player object and regenerates potions if inventory exists
+    def update_player(self, new_player):
+        self.player = new_player
+        if self.inventory is not None:
+            self._set_all_valid_potions()
 
     def add_ingredient(self, ingredient_name):
         # check that ingredient doesnt already exist
