@@ -1,14 +1,15 @@
 import csv
 import warnings
-from .effect import Effect
+from .effect import Effect, EffectType
 from .ingredient import Ingredient
-from .inventory import Inventory
 
 class IngredientsDatabase:
 
     def __init__(self, data_dir="data"):
         self._ingredients = {}  # Dict[str, Ingredient]
+        self._effects = {}  # Dict[str, Effect]
         self._load_ingredients(data_dir)
+        self._load_effects(data_dir)
 
     def _load_ingredients(self, data_dir):
         """Load all ingredients from CSV into dictionary (called once)."""
@@ -20,6 +21,17 @@ class IngredientsDatabase:
                 line = ','.join(row)
                 ingredient = Ingredient.from_csv_line(line)
                 self._ingredients[ingredient.name] = ingredient
+
+    def _load_effects(self, data_dir):
+        """Load all effects from CSV into dictionary (called once)."""
+        with open(f"{data_dir}/effects.csv", newline='') as f:
+            reader = csv.reader(f)
+            next(reader)  # Skip header
+
+            for row in reader:
+                line = ','.join(row)
+                effect = Effect.from_csv_line(line)
+                self._effects[effect.name] = effect
 
     def get_ingredient(self, name):
         """O(1) lookup by name from in-memory dictionary."""
@@ -33,44 +45,53 @@ class IngredientsDatabase:
         """
         return list(self._ingredients.values())
 
-    def sample_inventory(self, strategy: str, size: int = None):
-        """DEPRECATED: Use Inventory.generate_*() methods instead.
-
-        This method will be removed in version 2.0.
-
-        Migration guide:
-            Old: db.sample_inventory("vendor")
-            New: Inventory.generate_vendor(db).get_available_ingredients()
+    def ingredient_effect(self, effect_name, ingredient):
+        """Get an Effect object with ingredient-specific magnitude and duration.
 
         Args:
-            strategy: Sampling strategy ('normal', 'random_weighted', or 'vendor')
-            size: Number of ingredients (ignored for 'vendor' strategy)
+            effect_name: Name of the effect (e.g., "Restore Health")
+            ingredient: Ingredient object containing effect data
 
         Returns:
-            List of ingredient names
+            Effect object with ingredient-specific base_mag and base_dur,
+            or None if effect not found or ingredient doesn't have this effect
         """
-        warnings.warn(
-            "sample_inventory() is deprecated and will be removed in version 2.0. "
-            "Use Inventory.generate_normal(), Inventory.generate_random_weighted(), "
-            "or Inventory.generate_vendor() instead.",
-            DeprecationWarning,
-            stacklevel=2
+        # Get default effect template from in-memory dictionary (O(1))
+        default_effect = self._effects.get(effect_name)
+        if default_effect is None:
+            return None
+
+        # Get ingredient-specific magnitude/duration
+        effect_data = ingredient.get_effect_data(effect_name)
+        if effect_data is None:
+            return None
+
+        mag, dur = effect_data
+
+        # Determine effect type from default effect flags
+        if default_effect.is_fortify:
+            effect_type = EffectType.FORTIFY
+        elif default_effect.is_restore:
+            effect_type = EffectType.RESTORE
+        elif default_effect.is_poison:
+            effect_type = EffectType.POISON
+        else:
+            effect_type = None
+
+        # Create a new Effect object with ingredient-specific values
+        # (don't modify the cached default_effect)
+        ingredient_effect = Effect(
+            name=default_effect.name,
+            mag=mag,
+            dur=dur,
+            cost=default_effect.base_cost,
+            effect_type=effect_type,
+            variable_duration=default_effect.variable_duration,
+            description_template=default_effect.description_template
         )
 
-        # Delegate to new Inventory class
-        if strategy == "normal":
-            inv = Inventory.generate_normal(self, size)
-        elif strategy == "random_weighted":
-            inv = Inventory.generate_random_weighted(self, size)
-        elif strategy == "vendor":
-            inv = Inventory.generate_vendor(self)
-        else:
-            raise ValueError(
-                f"Invalid strategy '{strategy}'. "
-                f"Must be one of: ['normal', 'random_weighted', 'vendor']"
-            )
+        return ingredient_effect
 
-        return inv.get_available_ingredients()
 
     def print_self(self):
         """Debug helper to print all ingredients."""
@@ -146,14 +167,5 @@ class EffectsDatabase:
 
 if __name__ == "__main__":
 
-    ing_dat = IngredientsDatabase()
-    eff_dat = EffectsDatabase()
-
-    ing_dat.print_self()
-    eff_dat.print_self()
-
-    del ing_dat
-    del eff_dat
-
-    print("databases successfully deleted.")
-
+    ing_db = IngredientsDatabase()
+    print(ing_db)
