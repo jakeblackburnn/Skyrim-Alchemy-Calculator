@@ -156,15 +156,11 @@ class Inventory:
         return True
 
     def consume_recipe(self, ings: List[Ingredient]) -> bool:
-
         for ing in ings:
             if not self.has_ingredient(ing):
                 return False
-
         for ing in ings:
-            self._items[ing] -= 1
-            if self._items[ing] == 0:
-                del self._items[ing]
+            self.consume(ing)
 
         return True
 
