@@ -6,6 +6,7 @@ Created by J. Blackburn - Feb 1 2026
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Dict, List, Any, Optional
+import time
 
 @dataclass
 class MonteCarloConfig:
@@ -72,8 +73,16 @@ class MonteCarlo: # main runner object
     def run(self, experiment: Experiment):
         if self.verbose: print("running monte carlo...")
 
+        start = time.time()
+
         for run_idx in range(self.config.num_simulations):
             self.results.add_run(experiment.run_once(run_idx))
+
+        if self.verbose: 
+            total = time.time() - start
+            avg = total / self.config.num_simulations
+            print(f"total runtime: {total}\navg runtime per simultation: {avg}")
+
 
         if self.verbose: print("aggregating results")
         self.results.aggregate_stats()

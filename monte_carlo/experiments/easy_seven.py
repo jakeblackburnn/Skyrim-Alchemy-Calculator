@@ -4,6 +4,7 @@ from src.alembic import Alembic
 from src.player import Player
 from src.database import IngredientsDatabase
 from dataclasses import dataclass
+import time
 
 class EasyExperiment(Experiment):
 
@@ -13,18 +14,30 @@ class EasyExperiment(Experiment):
         self.inv_size = inv_size
 
     def run_once(self, run_idx) -> Dict[str, int]:
+        start = time.time()
         inv = Inventory.generate_normal(self.db, self.inv_size)
         alembic = Alembic(self.db, self.player, inv)
         potions = alembic.exhaust_inventory()
 
-        return {"run_idx": run_idx, "num_potions": len(potions)}
+        simtime = time.time() - start
+
+        return {"run_idx": run_idx, "num_potions": len(potions), "simulation_time": simtime}
 
 @dataclass
 class EasyResult(MonteCarloResult):
 
     def aggregate_stats(self):
-        stat = self._average_and_total_potions()
-        self.aggregated_stats.append(stat)
+        potion_stats = self._average_and_total_potions()
+        simtime_stats = self._average_and_total_simtime()
+        self.aggregated_stats.append(potion_stats)
+        self.aggregated_stats.append(simtime_stats)
+
+    def _average_and_total_simtime(self):
+        total = sum([run["simulation_time"] for run in self.run_results])
+        return {
+            "total_simtime": total,
+            "average_simtime": total / self.config_dict["num_simulations"]
+        }
 
     def _average_and_total_potions(self):
         total = sum([run["num_potions"] for run in self.run_results])
