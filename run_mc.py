@@ -5,7 +5,9 @@ config = MonteCarloConfig(num_simulations=10000)
 result = EasyResult(config_dict=config.to_dict())
 exp    = EasyExperiment()
 
-runner = MonteCarlo(config, result, verbose=True)
+runner = MonteCarlo(config, result)
 
 # TODO: time this shit
 runner.run(exp)
+
+result.summary()
