@@ -1,27 +1,20 @@
 """
 Monte Carlo Runner Module for ESV Skyrim alchemy analysis with random inventory generation
----
-
 Created by J. Blackburn - Feb 1 2026
-
-**components**: 
-    1. monte carlo config class
-    2. results class
-    3. single simulation function
-    4. main runner class
 """
-from abc import abstractmethod
+
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Dict, List, Any, Optional
 
 @dataclass
 class MonteCarloConfig:
-    num_simulations: int = 100
+    num_simulations: int = 10
     num_workers: int = 1
     seed: Optional[int] = None
     progress_bar: bool = False
     checkpoints: bool = False
-    checkpoint_freq: Optional[int] = 100
+    checkpoint_freq: Optional[int] = 1
 
     def to_dict(self) -> Dict[str, any]:
         return {
@@ -33,37 +26,58 @@ class MonteCarloConfig:
         }
 
 @dataclass
-class MonteCarloResult:
-    config_dict: Dict[str, any] = field(default_factory=lambda: {"issue": "no config specified"})
-    run_results: List[Dict[str, any]] = field(default_factory=list)
+class MonteCarloResult(ABC):
+    run_results:      List[Dict[str, any]] = field(default_factory=list)
+    aggregated_stats: List[Dict[str, any]] = field(default_factory=list)
 
-    
+    config_dict: Dict[str, any] = field(default_factory=lambda: 
+                                            {"missing": "no config specified for this entry"})
+
     def add_run(self, run: Dict[str, any]):
         self.run_results.append(run)
 
     def to_dataframe(self):
         pass
 
+    @abstractmethod
+    def aggregate_stats(self):
+        pass
+
     def summary(self):
         print(f"configuration:\n{self.config_dict}\n")
         print(f"results:\n{self.run_results}\n")
+        print(f"analysis:\n{self.aggregated_stats}\n")
 
 class Experiment:
     @abstractmethod
     def run_once(self) -> Dict[str, any]:
         pass
 
+
+
 class MonteCarlo: # main runner object
 
-    def __init__(self, config: MonteCarloConfig):
+    def __init__(self, config: MonteCarloConfig, results: MonteCarloResult, verbose=False):
+        self.verbose = verbose
+
+        if verbose: print("creating monte carlo runner...")
+
         self.config = config
-        print(f"created mc runner.\nconfig:\n{config.to_dict()}")
+        if verbose: print(f"loaded config: {config.to_dict()}")
+
+        self.results = results
+        if verbose: print(f"loaded results object.")
+
 
     def run(self, experiment: Experiment):
-        print("running mc experiment...")
-        results = MonteCarloResult(config_dict=self.config.to_dict())
+        if self.verbose: print("running monte carlo...")
 
         for run_idx in range(self.config.num_simulations):
-            results.add_run(experiment.run_once(run_idx))
+            self.results.add_run(experiment.run_once(run_idx))
 
-        results.summary()
+        if self.verbose: print("aggregating results")
+        self.results.aggregate_stats()
+
+        if self.verbose:
+            print("experiments complete")
+            self.results.summary()

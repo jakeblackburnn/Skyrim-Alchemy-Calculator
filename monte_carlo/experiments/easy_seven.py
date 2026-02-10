@@ -1,8 +1,9 @@
-from ..runner import Experiment
+from ..runner import Experiment, MonteCarloResult
 from src.inventory import Inventory
 from src.alembic import Alembic
 from src.player import Player
 from src.database import IngredientsDatabase
+from dataclasses import dataclass
 
 class EasyExperiment(Experiment):
 
@@ -17,3 +18,17 @@ class EasyExperiment(Experiment):
         potions = alembic.exhaust_inventory()
 
         return {"run_idx": run_idx, "num_potions": len(potions)}
+
+@dataclass
+class EasyResult(MonteCarloResult):
+
+    def aggregate_stats(self):
+        stat = self._average_and_total_potions()
+        self.aggregated_stats.append(stat)
+
+    def _average_and_total_potions(self):
+        total = sum([run["num_potions"] for run in self.run_results])
+        return {
+            "total_potions": total,
+            "average_potions": total / self.config_dict["num_simulations"],
+        }

@@ -1,10 +1,11 @@
 from monte_carlo.runner import MonteCarlo, MonteCarloConfig, Experiment
-from monte_carlo.experiments.easy_seven import EasyExperiment
+from monte_carlo.experiments.easy_seven import EasyExperiment, EasyResult
 
-config = MonteCarloConfig()
-runner = MonteCarlo(config)
-exp = EasyExperiment()
+config = MonteCarloConfig(num_simulations=10000)
+result = EasyResult(config_dict=config.to_dict())
+exp    = EasyExperiment()
 
-results = runner.run(exp)
+runner = MonteCarlo(config, result, verbose=True)
 
-print(results)
+# TODO: time this shit
+runner.run(exp)
