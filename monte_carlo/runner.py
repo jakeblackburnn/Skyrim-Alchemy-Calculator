@@ -45,8 +45,9 @@ class MonteCarloResult(ABC):
         pass
 
     def summary(self):
+        print(f"Monte Carlo Results Summary")
         print(f"configuration:\n{self.config_dict}\n")
-        print(f"results:\n{self.run_results}\n")
+        print(f"results:\n{len(self.run_results)} run entries.\n")
         print(f"analysis:\n{self.aggregated_stats}\n")
 
 class Experiment:
