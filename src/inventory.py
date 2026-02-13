@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Set, Dict, List, Optional
 import random
 import numpy as np
 
@@ -155,7 +155,7 @@ class Inventory:
 
         return True
 
-    def consume_recipe(self, ings: List[Ingredient]) -> bool:
+    def consume_recipe(self, ings: Set[Ingredient]) -> bool:
         for ing in ings:
             if not self.has_ingredient(ing):
                 return False
