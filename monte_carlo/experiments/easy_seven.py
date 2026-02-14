@@ -17,7 +17,7 @@ class EasyExperiment(Experiment):
         start = time.time()
         inv = Inventory.generate_normal(self.db, self.inv_size)
         alembic = Alembic(self.db, self.player, inv)
-        potions = alembic.exhaust_inventory()
+        potions = alembic.exhaust_inventory(strategy="lazy")
 
         simtime = time.time() - start
 
