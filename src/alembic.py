@@ -7,46 +7,45 @@ from .database import IngredientsDatabase
 
 class Alembic:
 
-    # basic state components:
-    #   player state
-    #   inventory
-    #   valid potions (depends on inv)
-    #   realized potions
-    def __init__(self, db=IngredientsDatabase(), player=Player(), inventory=None):
-        self._ing_db = db 
-        self.player = player
+    def __init__(self, db=IngredientsDatabase(), player=Player(), inventory=None): 
+        self.ing_db = db 
+        self.player = player 
         self.inventory = inventory  
+        self.realized_potions = []
 
-        # Only generate potions if ingredients provided
         if inventory is not None:
             self._set_valid_potions()
         else:
-            self.potions = []  # Initialize empty list
-
-    def set_player(self, new_player):
-        self.player = new_player
-        if self.inventory is not None:
-            self._set_valid_potions()
-
-    def set_inventory(self, inventory):
-        self.inventory = inventory
-        self._set_valid_potions()
+            self.valid_potions = []  # Initialize empty list
 
     def _set_valid_potions(self):
+        # this reconstructs the whole thing from the inventory state, 
+        # really should only be used in the constructor or 
+        # after manipulating the inventory manually which probably is a 
+        # bad idea anyways. 
         ingredients_list = self.inventory.get_available_ingredients()
         valid_combos = []
         for combo in combinations(ingredients_list, 2):
-            if self._has_shared_effects(combo):
+            if self._shared_effects(combo):
                 valid_combos.append(list(combo))
         for combo in combinations(ingredients_list, 3):
-            if self._has_shared_effects(combo):
+            if self._shared_effects(combo):
                 valid_combos.append(list(combo))
-        self.potions = [Potion(combo, self.player, self._ing_db) for combo in valid_combos]
+        self.valid_potions = [Potion(combo, self.player, self.ing_db) for combo in valid_combos]
 
-    def _has_shared_effects(self, ingredients):
+    def _update_valid_potions(self, ingredients: Set):
+        # check if ingredients *werent* used up
+        for ing in ingredients:
+            if not self.inventory.get_ingredient_availability(ing):
+                ingredients.remove(ing)
+
+        for ing in ingredients:
+            for pot in self.valid_potions:
+                if ing in pot.ingredients:
+                    self.valid_potions.remove(pot)
+
+    def _shared_effects(self, ingredients):
         ingredient_effects_sets = [set(ing.get_effect_names()) for ing in ingredients]
-
-        # For each ingredient, check if it shares at least one effect with another
         for i, effects_i in enumerate(ingredient_effects_sets):
             has_shared = False
             for j, effects_j in enumerate(ingredient_effects_sets):
@@ -56,45 +55,72 @@ class Alembic:
             if not has_shared:
                 return False
         return True
+    
 
-    def _lookahead(self):
-        pass
+    def exhaust_inventory(self, strategy=None):
 
-    def _update_valid_potions(self, recipie):
-        pass
-
-    def get_value_sorted_potions(self):
-        return sorted(self.potions, key=lambda p: p.total_value, reverse=True)
-
-    def filter_by_ingredient(self, ingredient=None):
-        return filter(lambda p: any([i is ingredient for i in p.ingredients()]), self.potions)
-
-    def exhaust_inventory(self, strategy="greedy-basic"):
-        if self.inventory is None:
-            raise ValueError("No inventory set. Call set_inventory() first.")
-
-        if strategy == "greedy-basic":
-            return self._greedy_basic_strategy()
+        # should the strategies really be strings?
+        if strategy == "lazy":
+            self._lazy_strategy()
+        elif strategy == None:
+            pass
+        elif strategy == "greedy":
+            pass
+        elif strategy == "random":
+            pass
         else:
             raise ValueError(f"Unknown strategy: {strategy}")
 
-    def _greedy_basic_strategy(self):
-        potions_made = []
-        while not self.inventory.is_empty():
-            self.ingredients_list = self.inventory.get_available_ingredients()
-            if not self.potions:
-                break
-            best = max(self.potions, key=lambda p: p.total_value)
-            if self.inventory.consume_recipe(best.ingredients):
-                potions_made.append(best)
-                self._set_valid_potions()
-            else:
-                break  # Safety check
-        return potions_made
+        return self.realized_potions
 
-    def delete_inventory(self):
-        self.inventory = None
-        self.potions = []
+    # fundamental potionmaking method - realizing a potion
+    def create_potion(self, potion):
+        self.inventory.consume_recipe(potion.recipie)
+        self._update_valid_potions(potion.recipie)
+        self.realized_potions.append(potion)
+            
+    ### Lazy Potionmaking Algorithms
+
+    def _lazy_potionmaking(self):
+        best = self._get_best_potion()
+        self.create_potion(best)
+
+    def _lazy_strategy(self):
+        while self.valid_potions:
+            self._lazy_potionmaking()
+
+    ### Random algorithm
+    def _random_strategy(self):
+        pass
+
+    ### Greedy Algorithm
+    def _greedy_strategy(self):
+        while not self.inventory.is_empty():
+            if not self.valid_potions:
+                break
+            best = self._get_best_potion()
+            self._update_valid_potions(best.ingredients)
+            if self.inventory.consume_recipe(best.ingredients):
+                self.realized_potions.append(best)
+            else:
+                break  
+    
+    ### Smart algorithm
+    def _smart_potionmaking(self):
+        pass
+
+    def _lookahead(self):
+        pass
+    def _get_best_potion(self):
+        return max(self.valid_potions, key=lambda p: p.total_value)
+
+    def _get_value_sorted_potions(self):
+        return sorted(self.potions, key=lambda p: p.total_value, reverse=True)
+
+    def _filter_by_ingredient(self, ingredient=None):
+        return filter(lambda p: any([i is ingredient for i in p.ingredients()]), self.potions)
+
+
 
 def main():
 
