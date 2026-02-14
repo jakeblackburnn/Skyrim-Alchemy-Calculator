@@ -127,6 +127,11 @@ class Inventory:
     def __init__(self, items: Optional[Dict[Ingredient, int]] = None):
         self._items = items.copy() if items is not None else {}
 
+    def get_ingredient_availability(self, ingredient) -> bool:
+        if ingredient in self._items.keys():
+            return True
+        return False
+
     def get_available_ingredients(self) -> List[Ingredient]:
         return list(self._items.keys())
 

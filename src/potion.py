@@ -3,10 +3,11 @@ from .ingredient import Ingredient
 from .database import IngredientsDatabase
 from .effect import Effect
 from .player import Player
+from typing import Set
 
 class Potion:
 
-    def __init__(self, ingredients, player, ingredients_db):
+    def __init__(self, ingredients: Set, player, ingredients_db):
         # Validate ingredient count
         if len(ingredients) not in [2, 3]:
             raise ValueError(f"Potion requires 2 or 3 ingredients, got {len(ingredients)}")
@@ -99,7 +100,7 @@ class Potion:
         self.realized_effects = [effect.realize(calc_player) for effect in base_effects]
         self.total_value = sum(e.value for e in self.realized_effects)
 
-        self.ingredients_list = ingredients
+        self.ingredients = ingredients
         self.ingredient_names = [ing.name for ing in ingredients]
 
         # Store dominant effect as realized
@@ -145,9 +146,9 @@ class Potion:
         return self.realized_effects
 
     @property 
-    def ingredients(self) -> list[Ingredient]:
+    def recipie(self) -> Set[Ingredient]:
         """list of ingredients used"""
-        return self.ingredients_list
+        return self.ingredients
 
     def __repr__(self):
         return f"{self.name}\nIngredients: {', '.join(self.ingredient_names)}\nValue: {self.total_value}"
